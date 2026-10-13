@@ -44,7 +44,7 @@ $mindweave 整理当前对话并打开画布
 
 Codex 只读捕获当前会话，由当前 agent 提炼带真实来源的节点与关系，再打开本地预览。页面编辑保存到运行服务机器上的 `.mindweave/`，后续整理保留人工字段、位置、删除和合并。需要再次整理时请求 `$mindweave 更新当前画布`；它只更新数据。
 
-在节点中复制引用，粘贴回 Codex 并提出问题；skill 先读取最新保存内容，再继续讨论。低层命令为 `npm run canvas -- capture / apply / open / read / status`，具体参数、Devbox 地址、来源规则与恢复方法见 [Codex 集成说明](docs/codex-integration.md)。实际验证使用 Codex CLI 0.159.2，无需再配置模型 API 密钥；尚未提供每轮自动触发。
+在节点中复制引用，粘贴回 Codex 并提出问题；skill 先读取最新保存内容，再继续讨论。低层命令为 `npm run mindweave -- capture / apply / open / read / status`，具体参数、Devbox 地址、来源规则与恢复方法见 [Codex 集成说明](docs/codex-integration.md)。实际验证使用 Codex CLI 0.159.2，无需再配置模型 API 密钥；尚未提供每轮自动触发。
 
 ## 当前可以做什么
 

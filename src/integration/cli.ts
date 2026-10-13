@@ -31,7 +31,7 @@ const summary = (record: CanvasRecord) => ({ canvasId: record.document.id, sessi
 
 async function main() {
   if (!command || command === 'help' || command === '--help') {
-    console.log('Mindweave Codex bridge\n\n  npm run canvas -- capture [--thread ID]\n  npm run canvas -- apply .mindweave/update.json\n  npm run canvas -- open [CANVAS_ID] [--url http://localhost:5173]\n  npm run canvas -- read mindweave://canvas/CANVAS_ID/node/NODE_ID\n  npm run canvas -- status [CANVAS_ID]\n\n整理不会打开页面；open 只返回链接，由宿主明确打开。')
+    console.log('Mindweave Codex bridge\n\n  npm run mindweave -- capture [--thread ID]\n  npm run mindweave -- apply .mindweave/update.json\n  npm run mindweave -- open [CANVAS_ID] [--url http://localhost:5173]\n  npm run mindweave -- read mindweave://canvas/CANVAS_ID/node/NODE_ID\n  npm run mindweave -- status [CANVAS_ID]\n\n整理不会打开页面；open 只返回链接，由宿主明确打开。')
     return
   }
   if (command === 'capture') {
@@ -85,6 +85,6 @@ async function main() {
       relations: graph.edges.filter(edge => edge.from === result.node.id || edge.to === result.node.id)
         .map(edge => ({ ...edge, fromTitle: graph.nodes.find(node => node.id === edge.from)!.title, toTitle: graph.nodes.find(node => node.id === edge.to)!.title })) }, null, 2)); return
   }
-  throw new CanvasError('未知操作。运行 npm run canvas -- help 查看命令。')
+  throw new CanvasError('未知操作。运行 npm run mindweave -- help 查看命令。')
 }
 main().catch(error => { console.error(error instanceof Error ? error.message : 'Mindweave 操作失败。'); process.exitCode = 1 })

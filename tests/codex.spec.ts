@@ -50,7 +50,7 @@ test('Codex 画布：浏览器人工修改回读、再次整理保留、刷新�
   await main.getByRole('button', { name: '复制引用', exact: true }).click()
   const reference = await page.evaluate(() => navigator.clipboard.readText())
   expect(reference).toBe(referenceFor(record.document.id, 'main'))
-  const { stdout } = await run(process.execPath, ['--import', 'tsx', 'src/integration/cli.ts', 'read', reference])
+  const { stdout } = await run('npm', ['run', '--silent', 'mindweave', '--', 'read', reference])
   expect(JSON.parse(stdout)).toMatchObject({ node: { title: '人工修正的标题', sourceIds: expect.any(Array) }, excerpts: [{ excerpt: '先整理对话，保留来源。' }] })
   // Save focus/viewport before the generated update so polling has no draft.
   await expect.poll(async () => (await read(record)).document.view.selected).toBe('main')

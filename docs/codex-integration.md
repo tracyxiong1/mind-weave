@@ -27,11 +27,11 @@ skill 先读取最新保存的人工内容、来源和关系，再基于它回�
 先按 README 安装依赖并启动 `npm run dev`。以下命令在项目根目录执行：
 
 ```bash
-npm run canvas -- capture
-npm run canvas -- apply .mindweave/updates/FILE.json
-npm run canvas -- open
-npm run canvas -- read 'mindweave://canvas/CANVAS_ID/node/NODE_ID'
-npm run canvas -- status
+npm run mindweave -- capture
+npm run mindweave -- apply .mindweave/updates/FILE.json
+npm run mindweave -- open
+npm run mindweave -- read 'mindweave://canvas/CANVAS_ID/node/NODE_ID'
+npm run mindweave -- status
 ```
 
 `capture` 默认使用 `CODEX_THREAD_ID`；明确指定另一会话时用 `capture --thread ID`。`open`、`status` 可传画布 ID。Devbox 已转发到其他本地端口时，用 `open --url http://localhost:转发端口`。在当前 Codex 桌面环境中，远端 5173 已有本机 63588 转发；这是当前运行地址，不是固定产品端口。可通过 Codex 的浏览器打开工具打开链接，或手动点击。
