@@ -1,6 +1,6 @@
 # 整理 JSON 格式
 
-完整类型位于项目 `src/integration/types.ts`；CLI 校验是权威入口。
+CLI 校验是权威入口；源码类型定义为仓库中的 `src/integration/types.ts`。
 
 ```json
 {

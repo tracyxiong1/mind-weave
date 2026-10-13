@@ -1,13 +1,21 @@
 {
   "name": "mind-weave",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
+  "description": "Editable conversation canvases for Codex",
+  "license": "MIT",
+  "repository": "github:tracyxiong1/mind-weave",
+  "bin": { "mindweave": "bin/mindweave.mjs" },
+  "files": ["bin/", "lib/", "dist/", "skills/", "licenses/", "scripts/prepare.mjs", "scripts/postinstall.mjs", "docs/codex-integration.md", "docs/installation.md"],
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "mindweave": "tsx src/integration/cli.ts",
+    "prepare": "node scripts/prepare.mjs",
+    "postinstall": "node scripts/postinstall.mjs",
+    "test:install": "node scripts/test-install.mjs",
     "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
@@ -16,15 +24,14 @@
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm test && npm run build"
   },
-  "dependencies": {
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
-  },
   "devDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "@playwright/test": "1.64.0",
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vite": "8.3.4",

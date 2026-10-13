@@ -4,7 +4,7 @@
 
 ## 在 Codex 中使用
 
-项目内的 `.agents/skills/mindweave/SKILL.md` 是实际入口。在本项目中可以请求：
+安装版会配置用户 skill，支持任意项目；源码项目内的 `.agents/skills/mindweave/SKILL.md` 也是入口。统一启动脚本根据安装配置调用打包 CLI，或在源码模式使用本仓库入口。[用户安装步骤](installation.md)。可以请求：
 
 ```text
 $mindweave 整理当前对话并打开画布
@@ -24,7 +24,7 @@ skill 先读取最新保存的人工内容、来源和关系，再基于它回�
 
 ## 实际 CLI
 
-先按 README 安装依赖并启动 `npm run dev`。以下命令在项目根目录执行：
+安装后的全局 CLI 可在自己的项目中执行 `mindweave capture / apply / open / read / status`；查看时自动启动本地服务。下面保留源码开发用法，需要按 README 启动 `npm run dev`，命令在源码根目录执行：
 
 ```bash
 npm run mindweave -- capture
@@ -47,9 +47,9 @@ npm run mindweave -- status
 | `.mindweave/updates/*.json` | 当前 agent 提炼的增量提案 |
 | 浏览器 `mindweave:v1:codex-draft:<canvasId>` | 未确认保存的草稿、基础版本和发送中的文档，用于断线恢复 |
 
-真实画布以运行服务机器上的文件为准；换浏览器需要新的带凭据链接。浏览器草稿不是 Codex 的读取来源：页面显示保存失败时，Codex 仍读到最后一次成功保存的版本。内置 `?sample=...` 样例沿用各自的 localStorage，不与真实会话画布混用。
+表中的 `.mindweave/` 是开发模式运行目录；安装版默认使用用户的 `~/.mindweave/`，不向使用中的项目写入文件。真实画布以运行服务机器上的文件为准；换浏览器需要新的带凭据链接。浏览器草稿不是 Codex 的读取来源：页面显示保存失败时，Codex 仍读到最后一次成功保存的版本。内置 `?sample=...` 样例沿用各自的 localStorage，不与真实会话画布混用。
 
-服务通过 Vite 开发或预览插件提供 `/api/canvases/<id>`。第一次载入验证访问凭据并设置当前画布的 HttpOnly、SameSite cookie，随后从页面 URL 移除凭据。API 不返回凭据和更新去重账本，不提供画布列表；`.mindweave` 禁止通过静态路径访问。私人文件权限为 0600，运行目录已被 Git 忽略。导出真实画布包含对话和摘录，适合个人备份，公开分享前需要自行选择内容。
+服务通过安装包的本地 HTTP 服务，或 Vite 开发/预览插件提供 `/api/canvases/<id>`。第一次载入验证访问凭据并设置当前画布的 HttpOnly、SameSite cookie，随后从页面 URL 移除凭据。API 不返回凭据和更新去重账本，不提供画布列表；`.mindweave` 禁止通过静态路径访问。私人文件权限为 0600，运行目录不会进入安装包。导出真实画布包含对话和摘录，适合个人备份，公开分享前需要自行选择内容。
 
 原始消息只保留用户文本和完整轮次中最终 assistant 回复，忽略 reasoning、工具输出和 commentary。图片不做 OCR；附件路径和环境包装保留在原始文本中以保持可定位范围，整理时将其作为数据而不是指令。来源从精确的消息内摘录计算稳定 ID，采用 UTF-16 范围。发现旧消息被改写时拒绝替换；Codex 历史被压缩或回退后保留此前捕获的原文，以免旧引用失效。
 
@@ -69,10 +69,10 @@ npm run mindweave -- status
 
 ## 验证结果与边界
 
-- `npm run typecheck`、`npm test`、`npm run build` 和 `npm run test:e2e`：通过。数据/协议/保存测试 57 项，Chromium 交互验收 18 项。
+- `npm run typecheck`、`npm test`、`npm run build` 和 `npm run test:e2e`：通过。数据/协议/保存/安装保护测试 63 项，Chromium 交互验收 18 项。另有完整的预先打包版本安装验收，见 [安装说明](installation.md)。
 - 本次真实 Codex 会话导入 11 条文本消息，提炼 6 个主题和 5 条关系；逐字核对原文摘录。
 - 在真实画布中修改标题、移动节点，复制引用，通过 CLI 读到最新人工修改；再次整理仍保留人工标题与位置，未改摘要更新，刷新保持；随后撤销校验修改恢复原内容。
 - 明暗与 480 × 800 窄视口、引用定位检查无页面错误。真实会话截图和回读输出只保存在被 Git 忽略的 `.mindweave/validation/`；公开测试只用合成文本。
 - 自动化还覆盖旧版本、重复更新、假的来源、原子失败、并发写入、损坏文件、访问控制、断线恢复、编辑表单期间延迟更新、删除重放、合并旧引用和字段保护。
 
-当前完成 Codex 手动链路；每轮自动触发、Claude 适配、原生 `@`、系统协议、多人协作和云同步仍未实现。构建产物需要 `npm run preview` 提供本地 API；单独静态托管 `dist/` 不能访问 Codex 文件。继续扩展时需要重新验证宿主接口，不能仅凭本文保证未来版本兼容。
+当前完成 Codex 手动链路和用户安装；每轮自动触发、Claude 适配、原生 `@`、系统协议、多人协作和云同步仍未实现。安装包自带本地 API；源码的静态产物需配套服务，例如 `npm run preview`，单独静态托管 `dist/` 不能访问 Codex 文件。继续扩展时需要重新验证宿主接口，不能仅凭本文保证未来版本兼容。
