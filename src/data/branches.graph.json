@@ -1,0 +1,191 @@
+{
+  "id": "branches",
+  "canvasId": "mw-branches",
+  "sessionId": "session-branches",
+  "nodes": [
+    {
+      "id": "context",
+      "title": "整理发散的对话",
+      "summary": "",
+      "details": "回看时找得到最初的思路，也能回到某条支线。背景作为普通节点，按需展开。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-context-1"
+      ]
+    },
+    {
+      "id": "comparison",
+      "title": "与思维导图比较",
+      "summary": "层级用于梳理，连线用于关联。",
+      "details": "从聊天分叉的问题，延伸到两种组织方式的比较。这里记录的是讨论过的观点，并不代表已经掌握或形成最终选择。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-comparison-1"
+      ]
+    },
+    {
+      "id": "structure",
+      "title": "层级展开与跨主题关联",
+      "summary": "树状层级 / 自由连线",
+      "details": "树状层级沿着一条支线展开；自由连线表达跨主题的共同概念。两者承担不同的组织作用。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-structure-1"
+      ]
+    },
+    {
+      "id": "two-views",
+      "title": "同一段对话的两种画法",
+      "summary": "沿分支展开，再关联共同主题",
+      "details": "合并重复内容，而不是为每一条消息建立节点。通过不同连线组织方式回看同一段对话。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-two-views-1",
+        "s-two-views-2"
+      ]
+    },
+    {
+      "id": "relations",
+      "title": "哪些关系值得连起来？",
+      "summary": "只留下有助于回忆的联系",
+      "details": "用户提出了节点密度与关系选择的问题。当前建议包括比较、因果、依赖与共同概念；还没有逐一验证适用边界。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-relations-1",
+        "s-relations-2"
+      ]
+    },
+    {
+      "id": "mixing",
+      "title": "什么时候适合混用？",
+      "summary": "",
+      "details": "AI 提出的可选探索方向，尚未展开讨论，不能作为用户提出的问题或已有结论。",
+      "kind": "suggestion",
+      "sourceIds": [
+        "s-mixing-1"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-branches-1",
+      "from": "context",
+      "to": "comparison",
+      "label": "延伸"
+    },
+    {
+      "id": "e-branches-2",
+      "from": "comparison",
+      "to": "structure",
+      "label": "比较"
+    },
+    {
+      "id": "e-branches-3",
+      "from": "comparison",
+      "to": "two-views",
+      "label": "例子"
+    },
+    {
+      "id": "e-branches-4",
+      "from": "comparison",
+      "to": "relations",
+      "label": "疑问"
+    },
+    {
+      "id": "e-branches-5",
+      "from": "comparison",
+      "to": "mixing",
+      "label": "可选探索"
+    }
+  ],
+  "positions": {
+    "context": {
+      "x": 0,
+      "y": 0,
+      "pinned": false
+    },
+    "comparison": {
+      "x": 0,
+      "y": 175,
+      "pinned": false
+    },
+    "structure": {
+      "x": 465,
+      "y": -5,
+      "pinned": false
+    },
+    "two-views": {
+      "x": 465,
+      "y": 145,
+      "pinned": false
+    },
+    "relations": {
+      "x": 465,
+      "y": 295,
+      "pinned": false
+    },
+    "mixing": {
+      "x": 465,
+      "y": 445,
+      "pinned": false
+    }
+  },
+  "sources": [
+    {
+      "id": "s-context-1",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-1",
+      "start": 0,
+      "end": 52
+    },
+    {
+      "id": "s-comparison-1",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-2",
+      "start": 15,
+      "end": 29
+    },
+    {
+      "id": "s-structure-1",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-4",
+      "start": 9,
+      "end": 39
+    },
+    {
+      "id": "s-two-views-1",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-3",
+      "start": 13,
+      "end": 33
+    },
+    {
+      "id": "s-two-views-2",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-4",
+      "start": 39,
+      "end": 61
+    },
+    {
+      "id": "s-relations-1",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-5",
+      "start": 0,
+      "end": 20
+    },
+    {
+      "id": "s-relations-2",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-6",
+      "start": 0,
+      "end": 29
+    },
+    {
+      "id": "s-mixing-1",
+      "sessionId": "session-branches",
+      "messageId": "m-branches-6",
+      "start": 29,
+      "end": 67
+    }
+  ]
+}

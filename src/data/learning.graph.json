@@ -1,0 +1,147 @@
+{
+  "id": "learning",
+  "canvasId": "mw-learning",
+  "sessionId": "session-learning",
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "理解检索增强生成",
+      "summary": "先从文档到回答的过程出发",
+      "details": "学习目标是理解基本流程；不把讨论过的概念标记为已掌握。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-goal-1"
+      ]
+    },
+    {
+      "id": "flow",
+      "title": "先检索，再生成",
+      "summary": "相关片段和问题一起交给模型",
+      "details": "这是对基本流程的简化解释。检索负责提供候选上下文，生成负责依据上下文组织答案。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-flow-1"
+      ]
+    },
+    {
+      "id": "index",
+      "title": "索引与检索",
+      "summary": "准备文档时 / 回答问题时",
+      "details": "两者发生在不同阶段，建索引不是每次提问都重做。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-index-1"
+      ]
+    },
+    {
+      "id": "limits",
+      "title": "检索不保证答案正确",
+      "summary": "漏检、过时和误解仍可能发生",
+      "details": "这是当前讨论中的适用边界，需要保留不确定性。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-limits-1"
+      ]
+    },
+    {
+      "id": "evaluation",
+      "title": "如何评估检索效果？",
+      "summary": "",
+      "details": "可选探索建议，还没有实际讨论。",
+      "kind": "suggestion",
+      "sourceIds": [
+        "s-evaluation-1"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-learning-1",
+      "from": "goal",
+      "to": "flow",
+      "label": "学习"
+    },
+    {
+      "id": "e-learning-2",
+      "from": "flow",
+      "to": "index",
+      "label": "机制"
+    },
+    {
+      "id": "e-learning-3",
+      "from": "flow",
+      "to": "limits",
+      "label": "边界"
+    },
+    {
+      "id": "e-learning-4",
+      "from": "flow",
+      "to": "evaluation",
+      "label": "可选探索"
+    }
+  ],
+  "positions": {
+    "goal": {
+      "x": 0,
+      "y": 0,
+      "pinned": false
+    },
+    "flow": {
+      "x": 0,
+      "y": 175,
+      "pinned": false
+    },
+    "index": {
+      "x": 465,
+      "y": 0,
+      "pinned": false
+    },
+    "limits": {
+      "x": 465,
+      "y": 185,
+      "pinned": false
+    },
+    "evaluation": {
+      "x": 465,
+      "y": 370,
+      "pinned": false
+    }
+  },
+  "sources": [
+    {
+      "id": "s-goal-1",
+      "sessionId": "session-learning",
+      "messageId": "m-learning-1",
+      "start": 0,
+      "end": 23
+    },
+    {
+      "id": "s-flow-1",
+      "sessionId": "session-learning",
+      "messageId": "m-learning-2",
+      "start": 18,
+      "end": 54
+    },
+    {
+      "id": "s-index-1",
+      "sessionId": "session-learning",
+      "messageId": "m-learning-4",
+      "start": 0,
+      "end": 25
+    },
+    {
+      "id": "s-limits-1",
+      "sessionId": "session-learning",
+      "messageId": "m-learning-4",
+      "start": 25,
+      "end": 60
+    },
+    {
+      "id": "s-evaluation-1",
+      "sessionId": "session-learning",
+      "messageId": "m-learning-5",
+      "start": 0,
+      "end": 33
+    }
+  ]
+}

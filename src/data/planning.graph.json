@@ -1,0 +1,163 @@
+{
+  "id": "planning",
+  "canvasId": "mw-planning",
+  "sessionId": "session-planning",
+  "nodes": [
+    {
+      "id": "scope",
+      "title": "单人、本地保存",
+      "summary": "刷新后保留画布，不需要账号",
+      "details": "首版不包含账户或云同步。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-scope-1"
+      ]
+    },
+    {
+      "id": "decision",
+      "title": "首版采用 localStorage",
+      "summary": "按画布 ID 保存版本化 JSON",
+      "details": "当前确定的方案基于较小的数据量与简单接口，而不是对所有数据规模的结论。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-decision-1",
+        "s-decision-2"
+      ]
+    },
+    {
+      "id": "tradeoff",
+      "title": "简单接口与容量取舍",
+      "summary": "同步读写 / 更大的结构化数据",
+      "details": "IndexedDB 是未来可考虑的替代方案，本次没有选用。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-tradeoff-1"
+      ]
+    },
+    {
+      "id": "protection",
+      "title": "生成内容与人工修改分开",
+      "summary": "保护编辑、删除记录与合并映射",
+      "details": "后续整理不能直接重写用户修改。保存失败必须可见。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-protection-1",
+        "s-protection-2"
+      ]
+    },
+    {
+      "id": "boundary",
+      "title": "站点数据清理后会丢失",
+      "summary": "当前存储不跨浏览器或设备同步",
+      "details": "用户已经指出的限制，应在使用说明中明确。",
+      "kind": "discussion",
+      "sourceIds": [
+        "s-boundary-1"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-planning-1",
+      "from": "scope",
+      "to": "decision",
+      "label": "决定"
+    },
+    {
+      "id": "e-planning-2",
+      "from": "decision",
+      "to": "tradeoff",
+      "label": "取舍"
+    },
+    {
+      "id": "e-planning-3",
+      "from": "decision",
+      "to": "protection",
+      "label": "约束"
+    },
+    {
+      "id": "e-planning-4",
+      "from": "decision",
+      "to": "boundary",
+      "label": "边界"
+    }
+  ],
+  "positions": {
+    "scope": {
+      "x": 0,
+      "y": 0,
+      "pinned": false
+    },
+    "decision": {
+      "x": 0,
+      "y": 175,
+      "pinned": false
+    },
+    "tradeoff": {
+      "x": 465,
+      "y": 0,
+      "pinned": false
+    },
+    "protection": {
+      "x": 465,
+      "y": 185,
+      "pinned": false
+    },
+    "boundary": {
+      "x": 465,
+      "y": 370,
+      "pinned": false
+    }
+  },
+  "sources": [
+    {
+      "id": "s-scope-1",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-1",
+      "start": 0,
+      "end": 34
+    },
+    {
+      "id": "s-decision-1",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-3",
+      "start": 0,
+      "end": 22
+    },
+    {
+      "id": "s-decision-2",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-4",
+      "start": 0,
+      "end": 37
+    },
+    {
+      "id": "s-tradeoff-1",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-2",
+      "start": 30,
+      "end": 82
+    },
+    {
+      "id": "s-protection-1",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-3",
+      "start": 22,
+      "end": 37
+    },
+    {
+      "id": "s-protection-2",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-4",
+      "start": 37,
+      "end": 68
+    },
+    {
+      "id": "s-boundary-1",
+      "sessionId": "session-planning",
+      "messageId": "m-planning-5",
+      "start": 21,
+      "end": 45
+    }
+  ]
+}
