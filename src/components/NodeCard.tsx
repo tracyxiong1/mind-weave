@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent, type FocusEvent } from 'react'
 import { excerptFor } from '../data/samples'
-import type { Position, RenderNode, Sample } from '../core/types'
+import type { Conversation, Position, RenderNode, Sample } from '../core/types'
 import { Icon } from './Icon'
 
 export type NodeAction = 'edit' | 'note' | 'connect' | 'merge' | 'relations' | 'delete'
 interface Props {
   node: RenderNode
   sample: Sample
+  conversation?: Conversation
+  live: boolean
   position: Position
   emphasized: boolean
   selected: boolean
@@ -77,18 +79,18 @@ export function NodeCard(props: Props) {
           <h3>{member.title}<small>{member.kind === 'note' ? '用户笔记' : member.kind === 'suggestion' ? '未讨论的建议' : '合并的讨论'}</small></h3>
           {member.summary && <p className="merged-summary">{member.summary}</p>}{member.details && <Explanation id={`explanation-${member.id}`} text={member.details} />}
         </section>)}
-        {node.kind === 'note' && !node.sourceIds.length && <p className="provenance">手动补充的内容，不属于示例对话原文。</p>}
+        {node.kind === 'note' && !node.sourceIds.length && <p className="provenance">手动补充的内容，不属于{props.live ? '原对话' : '示例对话'}原文。</p>}
         <div className="node-reading-actions">
           {node.sourceIds.length > 0 && <button type="button" aria-expanded={showSources} onClick={event => { event.stopPropagation(); props.onSources() }}><Icon name="source" />{showSources ? '收起原文' : '查看原文'}</button>}
           <button type="button" onClick={event => { event.stopPropagation(); props.onCopy() }}><Icon name="copy" />复制引用</button>
         </div>
-        {showSources && <section className="sources" aria-label="示例对话来源">
-          <h3 className="source-caption">示例原文</h3>
+        {showSources && <section className="sources" aria-label={props.live ? 'Codex 对话来源' : '示例对话来源'}>
+          <h3 className="source-caption">{props.live ? 'Codex 原文' : '示例原文'}</h3>
           {node.hasNotes && <p className="source-caption">合并的用户笔记另行标注。</p>}
           {node.sourceIds.map(id => {
             const source = sample.sources.find(source => source.id === id)
-            const data = source && excerptFor(sample, source)
-            if (!data || !source) return <p key={id}>此来源在当前示例中不可用。</p>
+            const data = source && excerptFor(sample, source, props.conversation)
+            if (!data || !source) return <p key={id}>此来源在当前对话中不可用。</p>
             return <div key={id} className="source-excerpt" data-source={id}>
               <span>{data.message.role === 'user' ? '用户' : 'Assistant'} · 消息 {data.conversation.messages.indexOf(data.message) + 1}</span>
               <blockquote>{data.excerpt}</blockquote>

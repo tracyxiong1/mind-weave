@@ -26,7 +26,7 @@ export type ReferenceResult =
 export function resolveReference(doc: CanvasDocument, reference: string): ReferenceResult {
   const parsed = parseReference(reference)
   if (!parsed) return { status: 'invalid', message: '请输入完整的 mindweave://canvas/…/node/… 引用。' }
-  if (parsed.canvasId !== doc.id) return { status: 'wrong-canvas', message: `引用属于另一张画布：${parsed.canvasId}。请打开对应样例。` }
+  if (parsed.canvasId !== doc.id) return { status: 'wrong-canvas', message: `引用属于另一张画布：${parsed.canvasId}。请打开对应画布。` }
   const id = canonicalId(doc, parsed.nodeId)
   if (doc.user.tombstones[parsed.nodeId] || (id && doc.user.tombstones[id])) {
     return { status: 'deleted', message: '此节点已删除。撤销删除后可重新定位。' }

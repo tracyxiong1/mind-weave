@@ -4,8 +4,9 @@ import { loadDocument, saveDocument, storageKey, type StoragePort } from './core
 import { referenceFor, resolveReference } from './core/references'
 import { edgePath, fitView, NODE_WIDTH, zoomAt, type Size } from './core/geometry'
 import { DEFAULT_NODE_HEIGHT, freePosition, layoutNodes } from './core/layout'
-import type { CanvasDocument, Command, Position, RenderNode, Viewport } from './core/types'
-import { sampleFromUrl } from './data/samples'
+import type { CanvasDocument, Command, Conversation, Position, RenderNode, Sample, Viewport } from './core/types'
+import type { LiveCanvas } from './core/live'
+import { LiveCanvasClient, restoreLiveDraft } from './core/live-client'
 import { Dialog } from './components/Dialog'
 import { Icon, IconButton } from './components/Icon'
 import { NodeCard, type NodeAction } from './components/NodeCard'
@@ -33,9 +34,9 @@ function download(text: string, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function App() {
-  const sample = useMemo(() => sampleFromUrl(window.location.search), [])
-  const [initial] = useState(() => loadDocument(storage, sample))
+export function CanvasApp({ sample, conversation, live }: { sample: Sample; conversation?: Conversation; live?: LiveCanvas }) {
+  const [initial] = useState(() => live ? restoreLiveDraft(storage, live) : loadDocument(storage, sample))
+  const [sourceData, setSourceData] = useState({ sample, conversation })
   const [doc, setDoc] = useState(initial.document)
   const docRef = useRef(doc)
   docRef.current = doc
@@ -52,6 +53,9 @@ export function App() {
   const [toast, setToast] = useState('')
   const canvasRef = useRef<HTMLElement>(null)
   const gesture = useRef<Gesture | null>(null)
+  const liveClient = useRef<LiveCanvasClient | null>(null)
+  const interaction = useRef({ blocked, panel, editing })
+  interaction.current = { blocked, panel, editing }
   const graph = useMemo(() => materialize(doc), [doc.generated, doc.user])
   const layout = useMemo(() => layoutNodes(graph.nodes.map(node => node.id), doc.view.positions, heights), [graph.nodes, doc.view.positions, heights])
   const displayPositions = drag ? { ...drag.positions, [drag.id]: drag.position } : layout
@@ -72,15 +76,30 @@ export function App() {
   }
 
   useEffect(() => {
+    if (!live) return
+    const client = new LiveCanvasClient(live, {
+      storage, getDocument: () => docRef.current, problem: setSaveProblem,
+      receive: record => {
+        docRef.current = record.document; setDoc(record.document)
+        setSourceData({ sample: record.sample, conversation: record.conversation })
+      },
+      interacting: () => Boolean(interaction.current.blocked || interaction.current.panel || interaction.current.editing || gesture.current),
+    })
+    liveClient.current = client
+    const poll = setInterval(() => { void client.poll() }, 2500)
+    return () => { clearInterval(poll); client.dispose(); liveClient.current = null }
+  }, [live])
+  useEffect(() => {
     if (blocked) return
+    if (live) { liveClient.current?.documentChanged(); return }
     const result = saveDocument(storage, doc)
     setSaveProblem(result.ok ? null : result.message)
-  }, [doc, blocked])
+  }, [doc, blocked, live])
   useEffect(() => {
-    const save = () => { if (!blocked) saveDocument(storage, docRef.current) }
+    const save = () => { if (!blocked) { if (live) liveClient.current?.pagehide(); else saveDocument(storage, docRef.current) } }
     window.addEventListener('pagehide', save)
     return () => window.removeEventListener('pagehide', save)
-  }, [blocked])
+  }, [blocked, live])
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
@@ -277,6 +296,9 @@ export function App() {
     changeView(state => ({ ...state, viewport: zoomAt(state.viewport ?? view, factor, { x: size.width / 2, y: size.height / 2 }) }))
   }
   const themeLabel = { system: '跟随系统', light: '浅色', dark: '深色' }[doc.view.theme]
+  const exportCanvas = () => download(JSON.stringify(live
+    ? { schemaVersion: 1, document: doc, conversation: sourceData.conversation, sources: sourceData.sample.sources, connection: live.connection }
+    : doc, null, 2), `${doc.id}.json`)
 
   return <>
     {closed ? <div className="closed-preview"><span>Mindweave</span><button type="button" onClick={() => setClosed(false)}>打开画布</button></div> : <main ref={canvasRef} className="canvas" aria-label="会话画布" tabIndex={0}
@@ -306,7 +328,7 @@ export function App() {
             </g>
           })}
         </svg>
-        {graph.nodes.map(node => <NodeCard key={node.id} node={node} sample={sample} position={positionFor(node.id)} emphasized={node.id === emphasizedId}
+        {graph.nodes.map(node => <NodeCard key={node.id} node={node} sample={sourceData.sample} conversation={sourceData.conversation} live={Boolean(live)} position={positionFor(node.id)} emphasized={node.id === emphasizedId}
           selected={doc.view.selected === node.id} expanded={doc.view.expanded.includes(node.id)} editing={editing === node.id} menuOpen={menu === node.id} showSources={sources.includes(node.id)}
           onSelect={() => changeView(state => ({ ...state, selected: node.id }))} onExpand={() => toggleExpanded(node)}
           onEdit={() => { setEditing(node.id); setMenu(null) }} onSave={(title, summary) => { if (run({ type: 'edit', id: node.id, title, summary })) finishEditing(node.id) }} onCancel={() => finishEditing(node.id)}
@@ -339,15 +361,21 @@ export function App() {
       {panel.type === 'help' && <div className="help-content">
         <p>在画布中回看和修正思路。选中节点不会发送消息；继续交流仍在原 agent 对话里。</p>
         <dl className="shortcuts"><dt>阅读</dt><dd>点击箭头展开，查看原文或复制引用。连接较多的讨论节点略作强调，支线摘要展开后显示。</dd><dt>编辑</dt><dd>双击节点，或聚焦后按 F2。</dd><dt>移动</dt><dd>拖动节点；Ctrl / ⌘ + 方向键移动 10 像素，配合 Shift 移动 40 像素。重叠时就近避让；展开详情会临时推开相邻节点，折叠后回到保存的位置。</dd><dt>平移 / 缩放</dt><dd>拖动空白、滚动或方向键平移；Ctrl / ⌘ + 滚轮缩放，也可用左下角按钮。</dd><dt>撤销 / 重做</dt><dd>Ctrl / ⌘ + Z；配合 Shift 重做。保留最近 40 步。</dd><dt>键盘</dt><dd>Tab 切换焦点，Enter 展开，Delete 删除；Esc 取消编辑或关闭菜单。</dd></dl>
-        <h3>保存在此浏览器</h3><p>画布、人工修改、位置、视口和主题自动保存在当前地址的 localStorage。关闭或刷新后仍可恢复；不同浏览器、设备、域名或端口之间不共享，清理站点数据会删除保存内容。</p>
-        <code className="storage-key">{storageKey(doc.id)}</code>
+        <h3>{live ? '已连接 Codex 对话' : '保存在此浏览器'}</h3>
+        {live ? <><p>{sourceData.conversation?.title ?? live.connection.title}</p><p>人工编辑、位置和主题保存在运行 Mindweave 的机器上，Codex 可通过稳定引用读取最新内容。浏览器同时保留未保存草稿。新的整理会保留人工修改，并在空闲时更新画布。</p></>
+          : <p>画布、人工修改、位置、视口和主题自动保存在当前地址的 localStorage。关闭或刷新后仍可恢复；不同浏览器、设备、域名或端口之间不共享，清理站点数据会删除保存内容。</p>}
+        <code className="storage-key">{live ? `.mindweave/canvases/${doc.id}.json` : storageKey(doc.id)}</code>
         {saveProblem && <p className="error-text">{saveProblem}</p>}
-        <div className="form-actions wrap"><button onClick={() => download(JSON.stringify(doc, null, 2), `${doc.id}.json`)}><Icon name="download" />导出当前画布</button>
+        <div className="form-actions wrap"><button onClick={exportCanvas}><Icon name="download" />导出当前画布</button>
           {blocked && initial.original && <button onClick={() => download(initial.original!, `${doc.id}.recovery.json`)}>下载原始数据</button>}
-          {blocked ? <button onClick={() => { setDoc(createDocument(sample)); setBlocked(false); setSaveProblem(null); setPanel(null) }}>用示例覆盖本地数据</button> : saveProblem && <button onClick={() => setDoc(current => ({ ...current }))}>重试保存</button>}
+          {live && (blocked || saveProblem) ? <button onClick={() => {
+            exportCanvas()
+            void liveClient.current?.reload().then(() => { setBlocked(false); setPanel(null) }).catch(error => setSaveProblem(error instanceof Error ? error.message : '载入失败，草稿已保留。'))
+          }}>备份并载入最新画布</button> : blocked && <button onClick={() => { setDoc(createDocument(sample)); setBlocked(false); setSaveProblem(null); setPanel(null) }}>用示例覆盖本地数据</button>}
+          {!blocked && saveProblem && <button onClick={() => { if (live) { setPanel(null); liveClient.current?.retry() } else setDoc(current => ({ ...current })) }}>重试保存</button>}
         </div>
-        <h3>三个独立样例</h3><div className="sample-links"><a href="?sample=branches">多次分叉</a><a href="?sample=learning">学习型</a><a href="?sample=planning">方案讨论型</a></div>
-        <p className="muted">目前使用确定的示例数据。模型提炼、原 agent 读取引用、原生 @ 补全和自动整理尚未接通。</p>
+        <h3>三个内置样例</h3><div className="sample-links"><a href="?sample=branches">多次分叉</a><a href="?sample=learning">学习型</a><a href="?sample=planning">方案讨论型</a></div>
+        <p className="muted">{live ? '当前画布来自真实 Codex 会话。整理由 Mindweave skill 手动触发；引用也由该 skill 读取。原生 @ 补全、自动整理和系统协议尚未接通。' : '当前展示内置样例。可在 Codex 中使用 Mindweave skill 整理真实会话，并打开对应画布。'}</p>
       </div>}
       {panel.type === 'resolve' && <ReferenceForm onResolve={reference => { const error = resolve(reference); if (!error) setPanel(null); return error }} />}
       {panel.type === 'copy' && <><p>选中下面的引用，按 Ctrl / ⌘ + C 复制。</p><textarea className="reference-input" aria-label="稳定引用" readOnly value={panel.reference} autoFocus onFocus={event => event.target.select()} /></>}

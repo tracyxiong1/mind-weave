@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mindweave"
+  short_description: "整理 Codex 对话为可编辑画布，读取节点引用继续讨论"
+  default_prompt: "使用 $mindweave 整理当前 Codex 对话并打开画布。"

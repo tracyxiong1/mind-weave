@@ -20,8 +20,8 @@ export function sampleFromUrl(search: string): Sample {
   const id = new URLSearchParams(search).get('sample') ?? 'branches'
   return samples[id] ?? samples.branches
 }
-export function excerptFor(sample: Sample, source: Source) {
-  const conversation = conversations[sample.id]
+export function excerptFor(sample: Sample, source: Source, conversation = conversations[sample.id]) {
+  if (!conversation) return null
   if (source.sessionId !== conversation.sessionId) return null
   const message = conversation.messages.find(message => message.id === source.messageId)
   if (!message || source.start < 0 || source.end > message.text.length || source.start >= source.end) return null

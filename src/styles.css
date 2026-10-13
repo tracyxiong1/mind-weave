@@ -126,6 +126,7 @@ dialog p { color: var(--muted); font-size: 13px; }
 .empty-state { position: absolute; height: auto; top: 45%; }
 .empty-state p { width: 100%; text-align: center; color: var(--muted); margin: 0; }
 .closed-preview span { font-size: 16px; color: var(--muted); }
+.load-message { max-width: min(460px, calc(100vw - 48px)); text-align: center; font-size: 13px; color: var(--muted); }
 @media (max-width: 700px) {
   .top-controls { top: 16px; right: 16px; }
   .zoom-controls { bottom: 18px; left: 16px; }
