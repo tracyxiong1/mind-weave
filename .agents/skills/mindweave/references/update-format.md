@@ -1,13 +1,13 @@
 # 整理 JSON 格式
 
-CLI 校验是权威入口；源码类型定义为仓库中的 `src/integration/types.ts`。
+CLI 校验是权威入口。使用 capture 返回的真实画布身份，格式不依赖特定宿主。
 
 ```json
 {
   "schemaVersion": 1,
   "id": "update-UNIQUE-ID",
-  "canvasId": "mw-codex-THREAD-ID",
-  "sessionId": "THREAD-ID",
+  "canvasId": "FROM-CAPTURE",
+  "sessionId": "FROM-CAPTURE",
   "baseRevision": 1,
   "nodes": [
     {

@@ -28,7 +28,7 @@ export function createCanvasServer(options: { assets: string; store: CanvasStore
           }); return
         }
         response.setHeader('Content-Type', 'application/json')
-        response.end(JSON.stringify({ service: 'mindweave', protocol: 1 })); return
+        response.end(JSON.stringify({ service: 'mindweave', protocol: 2 })); return
       }
       middleware(request, response, () => { void serveStatic() })
       async function serveStatic() {

@@ -4,7 +4,7 @@
 
 ## 在 Codex 中使用
 
-安装版会配置用户 skill，支持任意项目；源码项目内的 `.agents/skills/mindweave/SKILL.md` 也是入口。统一启动脚本根据安装配置调用打包 CLI，或在源码模式使用本仓库入口。[用户安装步骤](installation.md)。可以请求：
+安装版会配置用户 skill，支持任意项目；源码项目内的 `.agents/skills/mindweave/SKILL.md` 也是入口。统一启动脚本直接调用 skill 目录内的 CLI 与页面，不依赖安装路径配置或开发源码。[用户安装步骤](installation.md)。可以请求：
 
 ```text
 $mindweave 整理当前对话并打开画布
@@ -69,10 +69,10 @@ npm run mindweave -- status
 
 ## 验证结果与边界
 
-- `npm run typecheck`、`npm test`、`npm run build` 和 `npm run test:e2e`：通过。数据/协议/保存/安装保护测试 63 项，Chromium 交互验收 18 项。另有完整的预先打包版本安装验收，见 [安装说明](installation.md)。
+- `npm run typecheck`、`npm test`、`npm run build` 和 `npm run test:e2e`：通过。数据/协议/保存/安装保护及通用输入测试 74 项，Chromium 交互验收 18 项。另有完整的预先打包版本安装验收，见 [安装说明](installation.md)。
 - 本次真实 Codex 会话导入 11 条文本消息，提炼 6 个主题和 5 条关系；逐字核对原文摘录。
 - 在真实画布中修改标题、移动节点，复制引用，通过 CLI 读到最新人工修改；再次整理仍保留人工标题与位置，未改摘要更新，刷新保持；随后撤销校验修改恢复原内容。
 - 明暗与 480 × 800 窄视口、引用定位检查无页面错误。真实会话截图和回读输出只保存在被 Git 忽略的 `.mindweave/validation/`；公开测试只用合成文本。
 - 自动化还覆盖旧版本、重复更新、假的来源、原子失败、并发写入、损坏文件、访问控制、断线恢复、编辑表单期间延迟更新、删除重放、合并旧引用和字段保护。
 
-当前完成 Codex 手动链路和用户安装；每轮自动触发、Claude 适配、原生 `@`、系统协议、多人协作和云同步仍未实现。安装包自带本地 API；源码的静态产物需配套服务，例如 `npm run preview`，单独静态托管 `dist/` 不能访问 Codex 文件。继续扩展时需要重新验证宿主接口，不能仅凭本文保证未来版本兼容。
+2026-10-14 增加自包含 Agent Skills 目录和不依赖 Codex 的通用会话 JSON 输入。当前完成 Codex 手动链路和通用用户安装；每轮自动触发、Claude 等宿主的原生历史适配、原生 `@`、系统协议、多人协作和云同步仍未实现。安装包自带本地 API；源码的静态产物需配套服务，例如 `npm run preview`，单独静态托管 `dist/` 不能访问 Codex 文件。继续扩展时需要重新验证宿主接口，不能仅凭本文保证未来版本兼容。

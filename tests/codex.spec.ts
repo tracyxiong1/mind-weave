@@ -38,7 +38,7 @@ test('Codex 画布：浏览器人工修改回读、再次整理保留、刷新�
   await expect(page.locator('[data-node]')).toHaveCount(5)
   await main.getByRole('button', { name: '展开 整理对话', exact: true }).click()
   await main.getByRole('button', { name: '查看原文', exact: true }).click()
-  await expect(main.getByRole('region', { name: 'Codex 对话来源' })).toBeVisible()
+  await expect(main.getByRole('region', { name: '对话来源' })).toBeVisible()
   await expect(main.locator('blockquote')).toHaveText('先整理对话，保留来源。')
   await main.locator('h2').dblclick()
   await page.getByRole('textbox', { name: '节点标题' }).fill('人工修正的标题')

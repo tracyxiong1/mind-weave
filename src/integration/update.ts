@@ -1,18 +1,19 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { createDocument, materialize } from '../core/model'
 import { validateDocument } from '../core/persistence'
-import { isRecord, validateLiveCanvas, type LiveCanvas } from '../core/live'
+import { isRecord, validProvider, validateLiveCanvas, type LiveCanvas } from '../core/live'
 import { validId } from '../core/identifiers'
 import { DEFAULT_NODE_HEIGHT, freePosition } from '../core/layout'
 import type { Sample, Source } from '../core/types'
-import { CanvasError, type CanvasRecord, type CapturedThread, type GraphUpdate } from './types'
+import { CanvasError, type CanvasRecord, type CapturedConversation, type GraphUpdate } from './types'
 
 const digest = (value: string) => createHash('sha256').update(value).digest('hex')
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical)
   : isRecord(value) ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value
 function fail(message: string): never { throw new CanvasError(message) }
-export const canvasIdFor = (threadId: string) => `mw-codex-${threadId}`
+export const canvasIdFor = (sessionId: string, provider = 'codex') => provider === 'codex'
+  ? `mw-codex-${sessionId}` : `mw-${provider}-${digest(sessionId).slice(0, 32)}`
 
 export function publicCanvas(record: CanvasRecord): LiveCanvas {
   const { schemaVersion, version, document, sample, conversation, connection } = record
@@ -24,32 +25,33 @@ export function validateRecord(value: unknown): value is CanvasRecord {
       && typeof update.digest === 'string' && /^[a-f0-9]{64}$/.test(update.digest) && Number.isSafeInteger(update.revision) && Number(update.revision) >= 1)
 }
 
-export function captureThread(captured: CapturedThread, previous: CanvasRecord | null, at = new Date().toISOString()): CanvasRecord {
-  const id = canvasIdFor(captured.threadId)
-  if (!validId(id) || !validId(captured.threadId) || captured.conversation.sessionId !== captured.threadId) fail('Codex 会话身份无效。')
+export function captureThread(captured: CapturedConversation, previous: CanvasRecord | null, at = new Date().toISOString()): CanvasRecord {
+  const provider = captured.provider ?? 'codex'
+  const id = canvasIdFor(captured.threadId, provider)
+  if (!validProvider(provider) || !validId(id) || !validId(captured.threadId) || captured.conversation.sessionId !== captured.threadId) fail('会话身份无效。')
   if (!previous) {
     const sample: Sample = { id, canvasId: id, sessionId: captured.threadId, nodes: [], edges: [], positions: {}, sources: [] }
     const record: CanvasRecord = {
       schemaVersion: 1, version: 1, document: createDocument(sample), sample, conversation: captured.conversation,
-      connection: { provider: 'codex', threadId: captured.threadId, title: captured.title, capturedAt: at },
+      connection: { provider, threadId: captured.threadId, title: captured.title, capturedAt: at },
       accessToken: randomBytes(32).toString('hex'), updates: {},
     }
-    if (!validateRecord(record)) fail('Codex 消息结构无效。')
+    if (!validateRecord(record)) fail('消息结构无效。')
     return record
   }
-  if (previous.document.id !== id || previous.document.sessionId !== captured.threadId) fail('当前画布属于另一会话。')
+  if (previous.document.id !== id || previous.document.sessionId !== captured.threadId || previous.connection.provider !== provider) fail('当前画布属于另一会话。')
   const incoming = new Map(captured.conversation.messages.map(message => [message.id, message]))
   for (const message of previous.conversation.messages) {
     const next = incoming.get(message.id)
     if (next && (next.text !== message.text || next.role !== message.role)) fail('已有原始消息发生变化，保留原画布并停止更新。')
   }
-  // Retain prior sources even if Codex later compacts or rolls back its history.
+  // Retain prior sources even if the host later compacts or rolls back its history.
   const messages = [...previous.conversation.messages, ...captured.conversation.messages.filter(message => !previous.conversation.messages.some(old => old.id === message.id))]
   const conversation = { ...captured.conversation, messages }
   if (same(conversation, previous.conversation) && captured.title === previous.connection.title) return previous
   const record = { ...previous, version: previous.version + 1, conversation,
     connection: { ...previous.connection, title: captured.title, capturedAt: at } }
-  if (!validateRecord(record)) fail('Codex 消息结构无效。')
+  if (!validateRecord(record)) fail('消息结构无效。')
   return record
 }
 
@@ -102,7 +104,7 @@ export function applyGraphUpdate(previous: CanvasRecord, input: unknown): Canvas
     for (const quote of proposed.sources) {
       const message = messages.get(quote.messageId)
       const start = quote.start ?? message?.text.indexOf(quote.quote) ?? -1
-      if (!message || start < 0 || message.text.slice(start, start + quote.quote.length) !== quote.quote) fail('来源摘录与 Codex 原始消息不一致。')
+      if (!message || start < 0 || message.text.slice(start, start + quote.quote.length) !== quote.quote) fail('来源摘录与原始消息不一致。')
       const end = start + quote.quote.length
       const id = `s-${digest(`${quote.messageId}:${start}:${end}`).slice(0, 24)}`
       const source: Source = { id, sessionId: document.sessionId, messageId: message.id, start, end }

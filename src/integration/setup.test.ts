@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink, stat } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { runtimePaths } from './runtime'
@@ -10,18 +10,19 @@ afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(p
 async function setup() {
   const root = await mkdtemp(join(tmpdir(), 'mindweave-setup-')); directories.push(root)
   const source = join(root, 'bundle/skill'), destination = join(root, 'user/skills/mindweave')
-  await mkdir(join(source, 'scripts'), { recursive: true })
+  await mkdir(join(source, 'scripts/runtime'), { recursive: true })
   await writeFile(join(source, 'SKILL.md'), '---\nname: mindweave\ndescription: Synthetic test skill\n---\n')
   await writeFile(join(source, 'scripts/mindweave.mjs'), '// launcher')
+  await writeFile(join(source, 'scripts/runtime/cli.mjs'), '// self-contained runtime')
   const paths = { ...runtimePaths(), home: join(root, 'data'), entry: join(root, 'bundle/cli.mjs'), skillSource: source }
   return { root, source, destination, paths }
 }
 describe('user skill installation', () => {
-  it('installs independently of a project, records the bundled entry, and survives an npm update', async () => {
+  it('copies the complete skill without machine-specific paths and survives an npm update', async () => {
     const h = await setup()
     await setupSkill(false, h.paths, h.destination)
-    expect(JSON.parse(await readFile(join(h.destination, 'runtime.json'), 'utf8')).entry).toBe(h.paths.entry)
-    expect((await stat(join(h.destination, 'runtime.json'))).mode & 0o777).toBe(0o600)
+    expect(await readFile(join(h.destination, 'scripts/runtime/cli.mjs'), 'utf8')).toContain('self-contained runtime')
+    expect(await readdir(h.destination)).not.toContain('runtime.json')
     await writeFile(join(h.source, 'SKILL.md'), 'updated skill')
     const updated = await setupSkill(false, h.paths, h.destination)
     expect(await readFile(join(h.destination, 'SKILL.md'), 'utf8')).toBe('updated skill')

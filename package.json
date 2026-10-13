@@ -1,9 +1,9 @@
 {
   "name": "mind-weave",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Editable conversation canvases for Codex",
+  "description": "Portable Agent Skills conversation canvases with a Codex adapter",
   "license": "MIT",
   "repository": "github:tracyxiong1/mind-weave",
   "bin": { "mindweave": "bin/mindweave.mjs" },
@@ -14,8 +14,10 @@
   "scripts": {
     "mindweave": "tsx src/integration/cli.ts",
     "prepare": "node scripts/prepare.mjs",
+    "build:skill": "node scripts/build-skill.mjs",
     "postinstall": "node scripts/postinstall.mjs",
     "test:install": "node scripts/test-install.mjs",
+    "test:skill": "node scripts/test-skill-install.mjs",
     "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",

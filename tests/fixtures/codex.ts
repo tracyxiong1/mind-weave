@@ -1,8 +1,8 @@
 import { applyGraphUpdate, captureThread } from '../../src/integration/update'
-import type { CanvasRecord, CapturedThread, GraphUpdate } from '../../src/integration/types'
+import type { CanvasRecord, CapturedConversation, GraphUpdate } from '../../src/integration/types'
 
 /** Synthetic transcripts only. No captured user messages enter the test suite. */
-export function capturedThread(threadId = 'test-thread'): CapturedThread {
+export function capturedThread(threadId = 'test-thread'): CapturedConversation {
   return { threadId, cwd: '/test/project', title: '测试对话', conversation: { sessionId: threadId, title: '测试对话', messages: [
     { id: 'm-main', role: 'user', text: '🧵先整理对话，保留来源。' },
     { id: 'm-branch', role: 'assistant', text: '节点可以编辑、移动和合并。' },

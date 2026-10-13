@@ -4,13 +4,13 @@ import { createInterface } from 'node:readline'
 import { isRecord } from '../core/live'
 import { validId } from '../core/identifiers'
 import type { Message } from '../core/types'
-import { CanvasError, type CapturedThread } from './types'
+import { CanvasError, type CapturedConversation } from './types'
 
 /** Minimal, validated subset of the installed Codex app-server 0.159 protocol.
  * Never resume a thread or start a turn; read-only requests need no model API key.
  */
 export interface CodexThread { id: string; name: string | null; cwd: string; turns: unknown[] }
-export function normalizeThread(value: unknown): CapturedThread {
+export function normalizeThread(value: unknown): CapturedConversation {
   if (!isRecord(value) || !validId(value.id) || typeof value.cwd !== 'string' || !Array.isArray(value.turns)
     || (value.name !== null && value.name !== undefined && typeof value.name !== 'string')) throw new CanvasError('Codex thread/read 返回了不支持的结构。')
   const messages: Message[] = []
@@ -42,10 +42,10 @@ export function normalizeThread(value: unknown): CapturedThread {
   }
   if (!messages.length) throw new CanvasError('当前 Codex 会话没有可整理的文本消息。')
   const title = typeof value.name === 'string' ? value.name : 'Codex 会话'
-  return { threadId: value.id, title, cwd: value.cwd, conversation: { sessionId: value.id, title, messages } }
+  return { provider: 'codex', threadId: value.id, title, cwd: value.cwd, conversation: { sessionId: value.id, title, messages } }
 }
 
-export async function readCodexThread(threadId: string, options: { binary?: string; timeoutMs?: number } = {}): Promise<CapturedThread> {
+export async function readCodexThread(threadId: string, options: { binary?: string; timeoutMs?: number } = {}): Promise<CapturedConversation> {
   if (!validId(threadId)) throw new CanvasError('请提供当前 Codex 会话 ID，或在 Codex 中使用 CODEX_THREAD_ID。')
   const child = spawn(options.binary ?? process.env.MINDWEAVE_CODEX_BIN ?? 'codex', ['app-server'], { stdio: ['pipe', 'pipe', 'ignore'] })
   const lines = createInterface({ input: child.stdout })
@@ -82,7 +82,7 @@ export async function readCodexThread(threadId: string, options: { binary?: stri
     })
   }
   try {
-    await request('initialize', { clientInfo: { name: 'mindweave', title: 'Mindweave', version: '0.2.0' }, capabilities: { experimentalApi: true } })
+    await request('initialize', { clientInfo: { name: 'mindweave', title: 'Mindweave', version: '0.3.0' }, capabilities: { experimentalApi: true } })
     child.stdin.write(`${JSON.stringify({ method: 'initialized', params: {} })}\n`)
     const summary = await request('thread/read', { threadId, includeTurns: false })
     if (!isRecord(summary) || !isRecord(summary.thread)) throw new CanvasError('Codex 会话摘要无效。')

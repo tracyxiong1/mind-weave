@@ -2,6 +2,8 @@
 
 验证日期：2026-10-13（Asia/Shanghai）。以下保留第一阶段独立原型的验收记录；后续 Codex 集成的接口、真实闭环和检查结果见 [Codex 集成验证](../codex-integration.md#验证结果与边界)。
 
+通用 Agent Skills 安装与跨宿主输入的后续验收见 [通用 skill 安装验收](portable-skill.md)。
+
 ## 环境与结果
 
 - Node.js 22.16.0、npm 10.9.2。

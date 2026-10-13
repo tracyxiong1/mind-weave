@@ -84,8 +84,8 @@ export function NodeCard(props: Props) {
           {node.sourceIds.length > 0 && <button type="button" aria-expanded={showSources} onClick={event => { event.stopPropagation(); props.onSources() }}><Icon name="source" />{showSources ? '收起原文' : '查看原文'}</button>}
           <button type="button" onClick={event => { event.stopPropagation(); props.onCopy() }}><Icon name="copy" />复制引用</button>
         </div>
-        {showSources && <section className="sources" aria-label={props.live ? 'Codex 对话来源' : '示例对话来源'}>
-          <h3 className="source-caption">{props.live ? 'Codex 原文' : '示例原文'}</h3>
+        {showSources && <section className="sources" aria-label={props.live ? '对话来源' : '示例对话来源'}>
+          <h3 className="source-caption">{props.live ? '对话原文' : '示例原文'}</h3>
           {node.hasNotes && <p className="source-caption">合并的用户笔记另行标注。</p>}
           {node.sourceIds.map(id => {
             const source = sample.sources.find(source => source.id === id)

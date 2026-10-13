@@ -20,7 +20,8 @@ export interface GraphUpdate {
   nodes: ProposedNode[]
   edges: CanvasEdge[]
 }
-export interface CapturedThread {
+export interface CapturedConversation {
+  provider?: string
   threadId: string
   title: string
   cwd: string

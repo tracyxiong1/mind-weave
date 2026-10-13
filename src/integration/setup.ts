@@ -1,12 +1,12 @@
 import { mkdir, readFile, writeFile, cp, readdir, lstat, rename, rm } from 'node:fs/promises'
-import { join, dirname, relative, resolve } from 'node:path'
+import { join, dirname, relative } from 'node:path'
 import { randomUUID, createHash } from 'node:crypto'
 import { isRecord } from '../core/live'
 import { CanvasError } from './types'
 import { runtimePaths, skillDirectory } from './runtime'
 import { withLock } from './lock'
 
-const hash = (value: string) => createHash('sha256').update(value).digest('hex')
+const hash = (value: Uint8Array) => createHash('sha256').update(value).digest('hex')
 async function files(directory: string): Promise<Record<string, string>> {
   const result: Record<string, string> = {}
   async function walk(path: string) {
@@ -14,7 +14,7 @@ async function files(directory: string): Promise<Record<string, string>> {
       const full = join(path, item.name)
       if (item.isSymbolicLink()) throw new CanvasError('skill 内有符号链接，保留现有安装。')
       if (item.isDirectory()) await walk(full)
-      else if (item.name !== '.mindweave-install.json') result[relative(directory, full)] = hash(await readFile(full, 'utf8'))
+      else if (item.name !== '.mindweave-install.json') result[relative(directory, full)] = hash(await readFile(full))
     }
   }
   await walk(directory); return result
@@ -39,7 +39,6 @@ export async function setupSkill(force = false, paths = runtimePaths(), destinat
     let backup: string | null = null, moved = false
     try {
       await cp(paths.skillSource, temporary, { recursive: true })
-      await writeFile(join(temporary, 'runtime.json'), JSON.stringify({ schemaVersion: 1, entry: resolve(paths.entry) }), { mode: 0o600 })
       const manifest = await files(temporary)
       await writeFile(join(temporary, '.mindweave-install.json'), JSON.stringify({ schemaVersion: 1, files: manifest }), { mode: 0o600 })
       if (previous) {

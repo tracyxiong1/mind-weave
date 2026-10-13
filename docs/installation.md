@@ -1,61 +1,78 @@
 # 安装与首次使用
 
-## 用户安装
+## 从 GitHub 安装通用 skill
 
-需要 Node.js 22.12+ 和已有的 Codex CLI。本次实际验证为 Node.js 22.16.0、npm 10.9.2、Codex CLI 0.159.2。Mindweave 使用当前 Codex agent 整理，不需要另一个模型 API 密钥。
+当前 skill 是自包含的 Agent Skills 目录，内含 CLI、预构建页面、引用格式和许可证。需要 Node.js 22.12+；不需要 npm 全局安装、克隆源码、开发依赖或额外模型 API 密钥。自动读取 Codex 历史时才需要 Codex CLI。
 
-一次安装：
+在 Codex 中请求：
 
-```bash
-npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.2.0.tgz
+```text
+$skill-installer 从 tracyxiong1/mind-weave 安装 .agents/skills/mindweave，分支 codex/first-canvas-prototype。
 ```
 
-也可先[下载安装包](https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.2.0.tgz)，再运行 `npm install -g <下载文件的路径>`。这是 GitHub 分支上的预先打包版本，尚未发布到 npm registry；不能直接用 `npm install -g mind-weave` 代替。
+当前分支名含 `/`，请分别提供仓库、分支与目录，避免把它误解析为 GitHub 链接中的一级分支。安装器只复制该目录，其所有运行文件都在目录内；安装过程中不执行构建或启动服务。安装后下一轮可以调用 `$mindweave`；未出现时重新启动 Codex。
 
-安装包已包含 CLI、画布页面和 skill，不需要下载源码、安装开发依赖或运行开发服务器。安装会配置用户级 `$mindweave` skill：默认在 `~/.agents/skills/mindweave`；设置了 CODEX_HOME 时使用其 `skills/mindweave`。skill 使用记录的安装路径调用 CLI，避免依赖 Codex 进程是否刷新了 PATH。
+其他兼容 Agent Skills 的工具可整体复制 `.agents/skills/mindweave` 到其 skill 发现位置。`SKILL.md` 及 scripts/references/assets 是通用部分，`agents/openai.yaml` 是可选的 Codex 展示元数据。运行位置不固定，含空格的路径和移动后的 skill 均可用。
 
-如果 npm 默认全局目录没有写权限，可用用户目录安装（macOS/Linux）：
+## 整理、预览与回读
 
-```bash
-npm install -g --prefix "$HOME/.local" https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.2.0.tgz
-```
-
-skill 仍会自动配置；终端里手动调用 `mindweave` 时，该目录的 `bin` 需要在 PATH 中。Windows 使用 npm 配置的用户级全局目录。本次安装验收覆盖 Linux 和含空格的安装路径，尚未进行真实 macOS/Windows 验收。
-
-## 在自己的项目中使用
-
-安装后，在任意项目的 Codex 对话中请求：
+在 Codex 中请求：
 
 ```text
 $mindweave 整理当前对话并打开画布
 ```
 
-首次主动整理会读取当前会话可访问的历史文本，不会扫描项目中的其他会话、代码或 Git。安装本身不回溯历史，也不启动预览。画布与私人运行数据默认保存在 `~/.mindweave/`，不向存量项目写入文件。
+Codex 只读当前会话的完整可访问历史，由当前 agent 提炼图。其他宿主使用 [通用会话 JSON](../.agents/skills/mindweave/references/conversation-format.md)，从实际可访问原文构建输入；它不要求 Codex CLI，也不承诺自动回溯其他宿主的历史。
 
-查看画布时服务自动启动，后续复用同一服务；CLI 返回带当前画布访问凭据的链接，由 Codex 打开或由用户点击。编辑保存后复制节点引用，粘贴回 Codex 并提出问题，skill 会读取最新人工内容。再次请求整理会保留人工字段、位置、删除和合并记录。
+所有宿主都通过安装目录内的脚本执行：
 
-只更新数据：`$mindweave 更新当前画布`。每轮自动整理和原生 `@` 补全尚未提供。
+```bash
+node "/实际安装目录/mindweave/scripts/mindweave.mjs" capture --input /会话文件的绝对路径.json
+node "/实际安装目录/mindweave/scripts/mindweave.mjs" apply /整理文件的绝对路径.json
+node "/实际安装目录/mindweave/scripts/mindweave.mjs" open CANVAS_ID
+node "/实际安装目录/mindweave/scripts/mindweave.mjs" read 'mindweave://canvas/CANVAS_ID/node/NODE_ID'
+```
+
+用真实路径和 capture 返回的 ID 替换占位值。输入、整理与画布的来源校验见 [skill 操作说明](../.agents/skills/mindweave/SKILL.md)。provider 与 sessionId 联合区分会话，Codex 原有画布 ID 保持兼容。
+
+安装本身不回溯历史、不打开预览。capture/apply 只更新数据；open 按需启动并复用本地服务。打开返回的带凭据链接后即可编辑；复制节点引用给 agent，read 返回最新已保存内容。再次整理保护人工字段、位置、笔记、关系、删除与合并记录。
+
+画布与私人运行数据默认在 `~/.mindweave/`，不写入使用中的项目或 skill 目录。每轮自动整理、其他宿主原生历史适配、原生补全与系统协议尚未提供。
+
+## 可选的 npm CLI 安装
+
+需要终端中的全局 `mindweave` 命令时，也可安装预打包版本：
+
+```bash
+npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.3.0.tgz
+```
+
+它会复制完整的用户 skill，默认在 `~/.agents/skills/mindweave`；显式设置 CODEX_HOME 时使用其 skills 目录。安装版 skill 不再依赖机器专属 runtime.json 或原 npm 安装路径。npm 禁用安装脚本时运行 `mindweave setup`。尚未发布到 npm registry，不能直接使用 `npm install -g mind-weave`。
+
+全局目录没有写权限时（macOS/Linux）可用 `--prefix "$HOME/.local"`；skill 不依赖刷新 PATH。终端直接调用 mindweave 需要将该前缀的 bin 加到 PATH。不要同时在多个用户发现目录安装同名 skill，否则可能出现重复选项。
+
+已有自定义或修改过的同名 skill 会保留，安装器拒绝覆盖。npm 的 `mindweave setup --force` 可明确替换并先备份；GitHub 安装器不提供强制覆盖。保留现有内容后再选择安装位置。
 
 ## 配置与恢复
 
-- npm 禁用了安装脚本时，安装完成后运行 `mindweave setup` 配置 skill。skill 未显示时可在新对话中检查；`mindweave setup` 会给出实际文件位置。
-- 已有自定义或改过的同名 skill 会保留，不自动覆盖。明确替换时用 `mindweave setup --force`，原目录先备份到 Mindweave 运行目录的 `backups/`，不删除备份。
-- `mindweave stop` 停止本地服务，保留所有画布；下次查看时重新启动。数据与服务目录可通过 `MINDWEAVE_HOME` 指定，skill 的父目录可通过 `MINDWEAVE_SKILLS_DIR` 指定。
-- 在 Devbox 中使用时，安装和存储位于 Devbox；仍需转发服务返回链接中的端口，或设置固定 `MINDWEAVE_PORT` 并转发它。使用 `mindweave open --url http://localhost:转发端口` 返回用户侧地址。自动启动服务不会自动设置 SSH 转发。
-- 原型开发仓库中的旧 `.mindweave/` 仍保留；安装版默认用户目录是独立存储，不自动搬移开发数据。首次重新整理同一真实会话前，应先导出需要保留的旧画布人工修改。
+- `MINDWEAVE_HOME` 指定数据目录；`stop` 停止本地服务，保留所有画布。新版本查看时会验证并停止不支持通用会话的旧服务，再启动新版，不删除数据。
+- Devbox 中安装与存储位于 Devbox，仍需转发服务返回链接中的端口。可用 `MINDWEAVE_PORT` 固定端口，再用 `open CANVAS_ID --url http://localhost:转发端口` 返回用户侧地址；服务不会自动配置 SSH 转发。
+- GitHub skill 与 npm skill 默认使用用户数据目录。源码 `npm run mindweave` 仍使用仓库 `.mindweave/`；旧开发数据不自动搬移，切换前可导出需要保留的人工修改。
+- 验收覆盖 Linux、Chromium 和含空格的路径；尚未进行真实 macOS/Windows 或其他 agent 的原生历史接口验收。通用 JSON 导入已独立于 Codex 验证。
 
-## 开发与制作安装包
+## 构建与验收
 
-源代码开发仍使用 `npm ci`、`npm run dev` 和 `npm run mindweave -- COMMAND`。repo skill 的统一启动脚本自动找到源码入口；它不会冒用用户级安装配置。
+修改 src 或页面后运行 `npm run build:skill`，将更新后的 scripts/runtime 与 assets/web 一起提交，GitHub 安装才会取得匹配的运行文件。`npm pack` 的 prepare 也会同步构建它们，并打包 CLI 与完整 skill。
 
 ```bash
 npm run check
 npm run test:e2e
+npm run test:skill
 npm run test:install
 ```
 
-`test:install` 会构建、打包并在隔离的全局前缀中安装，然后验证一个已有 Git 项目的首次捕获、独立存储、服务并发启动/复用、画布人工修改、再次整理保护、引用回读、停止/重启和项目文件保持。默认用合成会话；设置 `MINDWEAVE_TEST_REAL_CODEX=1` 额外核对本机 Codex 的真实 skill 发现，不运行模型。
+`test:skill` 默认复制独立目录到隔离环境；设置 `MINDWEAVE_SKILL_TEST_REF=提交或分支` 时调用官方 GitHub 安装器直接下载安装，再验证文件/标准输入导入、真实页面编辑、来源回读、再次整理保护、路径移动与存量项目保持。设置 `MINDWEAVE_TEST_REAL_CODEX=1` 额外核对真实 Codex 的 skills/list，不运行模型。安装器位置可通过 MINDWEAVE_SKILL_INSTALLER 指定。
 
-`npm pack` 通过 prepare 构建 CLI 和页面，包内只包含运行产物、skill、许可证与说明；没有开发源码、测试、Git 元数据或真实对话。输出例如 `mind-weave-0.2.0.tgz`。本次分发包放在 `releases/`；版本升级时重新生成与验收，再更新下载链接，不把本地测试数据加入包。
+`test:install` 验证 npm 打包、全局命令、自动配置 skill 和原有 Codex 手动闭环。测试全部使用合成对话；私人文件不提交、不进入 skill 或 npm 分发包。
 
-全局命令安装遵循 [npm bin 规则](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#bin)；用户 skill 的发现位置参照 [Codex 官方文档](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills)。源码 Git 安装的 prepare 行为见 [npm install 文档](https://docs.npmjs.com/cli/v11/commands/npm-install/)。
+格式与安装说明见 [OpenAI 官方 skill 文档](https://learn.chatgpt.com/docs/build-skills)。

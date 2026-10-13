@@ -22,8 +22,8 @@ export function CanvasLoader({ id, access }: { id: string; access?: string }) {
     return () => { disposed = true }
   }, [id, access, retry])
   if (record) return <CanvasApp sample={record.sample} conversation={record.conversation} live={record} />
-  return <main className="closed-preview" aria-label="加载 Codex 画布"><div className="load-message">
-    <p role={problem ? 'alert' : 'status'}>{problem || '正在载入 Codex 会话画布…'}</p>
+  return <main className="closed-preview" aria-label="加载会话画布"><div className="load-message">
+    <p role={problem ? 'alert' : 'status'}>{problem || '正在载入会话画布…'}</p>
     {problem && <button type="button" onClick={() => setRetry(value => value + 1)}>重试载入</button>}
   </div></main>
 }

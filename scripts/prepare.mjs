@@ -5,14 +5,14 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 if (existsSync(resolve(root, 'src/integration/cli.ts'))) {
-  const { build: webBuild } = await import('vite')
+  const { buildSkill } = await import('./build-skill.mjs')
   const { build } = await import('esbuild')
   // Keep npm pack --json machine-readable; build diagnostics use stderr.
-  await webBuild({ root, logLevel: 'silent' })
+  await buildSkill(root)
   await mkdir(resolve(root, 'lib'), { recursive: true })
   await build({ entryPoints: [resolve(root, 'src/integration/cli.ts')], outfile: resolve(root, 'lib/cli.mjs'),
     bundle: true, platform: 'node', format: 'esm', target: 'node22',
-    define: { __MINDWEAVE_PACKAGE__: 'true' }, logLevel: 'warning' })
+    define: { __MINDWEAVE_PACKAGE__: 'true', __MINDWEAVE_SKILL__: 'false' }, logLevel: 'warning' })
   await rm(resolve(root, 'skills'), { recursive: true, force: true })
   await cp(resolve(root, '.agents/skills/mindweave'), resolve(root, 'skills/mindweave'), { recursive: true })
   await mkdir(resolve(root, 'licenses'), { recursive: true })

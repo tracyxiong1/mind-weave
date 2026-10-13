@@ -1,7 +1,8 @@
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { readFile, mkdir, writeFile, stat } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { CanvasStore } from './store'
 import { readCodexThread } from './codex'
+import { normalizeConversation } from './conversation'
 import { applyGraphUpdate, canvasIdFor, captureThread, publicCanvas } from './update'
 import { CanvasError, type CanvasRecord } from './types'
 import { parseReference, referenceFor, resolveReference } from '../core/references'
@@ -24,16 +25,16 @@ function option(name: string) {
 }
 async function requireCanvas(id: string): Promise<CanvasRecord> {
   const record = await store.read(id)
-  if (!record) throw new CanvasError('画布不存在。请先在 Codex 中整理当前会话。', 404)
+  if (!record) throw new CanvasError('画布不存在。请先捕获并整理当前会话。', 404)
   return record
 }
-const summary = (record: CanvasRecord) => ({ canvasId: record.document.id, sessionId: record.document.sessionId,
+const summary = (record: CanvasRecord) => ({ canvasId: record.document.id, sessionId: record.document.sessionId, provider: record.connection.provider,
   baseRevision: record.document.generated.revision, version: record.version, messages: record.conversation.messages.length,
   nodes: materialize(record.document).nodes.length, edges: materialize(record.document).edges.length })
 
 async function main() {
   if (!command || command === 'help' || command === '--help') {
-    console.log('Mindweave\n\n在任意项目的 Codex 中使用：$mindweave 整理当前对话并打开画布\n\n  mindweave setup [--force]          配置用户 skill\n  mindweave capture [--thread ID]    读取当前对话\n  mindweave apply FILE.json         应用整理结果\n  mindweave open [CANVAS_ID]        获取预览链接，安装版自动启动服务\n  mindweave read REFERENCE          读取节点的最新内容\n  mindweave status [CANVAS_ID]       查看画布状态\n  mindweave stop                    停止安装版服务\n\n源码开发入口：npm run mindweave -- COMMAND\n整理不会打开页面；open 返回链接，由宿主明确打开。')
+    console.log('Mindweave\n\n使用 mindweave skill 整理当前对话并打开画布；Codex 中可用 $mindweave。\n\n  mindweave capture --input FILE    导入通用会话 JSON；- 表示标准输入\n  mindweave capture [--thread ID]   只读当前 Codex 对话\n  mindweave apply FILE.json         应用整理结果\n  mindweave open CANVAS_ID          获取预览链接，安装版自动启动服务\n  mindweave read REFERENCE          读取节点的最新内容\n  mindweave status CANVAS_ID        查看画布状态\n  mindweave stop                    停止安装版服务\n  mindweave setup [--force]          配置 Codex 用户 skill\n\n需要 Node.js 22.12+；仅 Codex 自动读取需要 Codex CLI。\n源码开发入口：npm run mindweave -- COMMAND\n整理不会打开页面；open 返回链接，由宿主明确打开。')
     return
   }
   if (command === 'setup') {
@@ -46,10 +47,31 @@ async function main() {
   }
   if (command === 'stop') { if (args.length) throw new CanvasError('stop 不接受参数。'); console.log(JSON.stringify(await stopServer())); return }
   if (command === 'capture') {
-    const threadId = option('--thread') ?? process.env.CODEX_THREAD_ID
-    if (args.length || !threadId) throw new CanvasError('请在当前 Codex 会话中执行 capture，或明确传入 --thread。')
-    const captured = await readCodexThread(threadId)
-    const record = await store.change(canvasIdFor(threadId), previous => captureThread(captured, previous))
+    const input = option('--input'), requestedThread = option('--thread')
+    if (args.length || (input && requestedThread)) throw new CanvasError('capture 使用 --input FILE 或 --thread ID，不能混用。')
+    let captured
+    if (input) {
+      const maximum = 32 * 1024 * 1024
+      let text: string
+      if (input === '-') {
+        const chunks: Buffer[] = []; let bytes = 0
+        for await (const chunk of process.stdin) {
+          bytes += chunk.length
+          if (bytes > maximum) throw new CanvasError('会话 JSON 超过 32 MiB，本轮未导入。')
+          chunks.push(Buffer.from(chunk))
+        }
+        text = Buffer.concat(chunks).toString('utf8')
+      } else {
+        if ((await stat(resolve(input))).size > maximum) throw new CanvasError('会话 JSON 超过 32 MiB，本轮未导入。')
+        text = await readFile(resolve(input), 'utf8')
+      }
+      captured = normalizeConversation(JSON.parse(text))
+    } else {
+      const threadId = requestedThread ?? process.env.CODEX_THREAD_ID
+      if (!threadId) throw new CanvasError('请用 capture --input 导入会话 JSON；Codex 中可使用当前 CODEX_THREAD_ID 或 --thread。')
+      captured = await readCodexThread(threadId)
+    }
+    const record = await store.change(canvasIdFor(captured.threadId, captured.provider), previous => captureThread(captured, previous))
     const directory = paths.captures
     await mkdir(directory, { recursive: true, mode: 0o700 })
     const path = join(directory, `${record.document.id}.json`)
@@ -93,7 +115,8 @@ async function main() {
       const message = record.conversation.messages.find(message => message.id === source.messageId)!
       return { ...source, role: message.role, excerpt: message.text.slice(source.start, source.end) }
     })
-    console.log(JSON.stringify({ reference: args[0], threadId: record.connection.threadId, revision: record.document.generated.revision,
+    console.log(JSON.stringify({ reference: args[0], provider: record.connection.provider, sessionId: record.document.sessionId,
+      threadId: record.connection.threadId, revision: record.document.generated.revision,
       merged: result.merged, node: result.node, excerpts,
       relations: graph.edges.filter(edge => edge.from === result.node.id || edge.to === result.node.id)
         .map(edge => ({ ...edge, fromTitle: graph.nodes.find(node => node.id === edge.from)!.title, toTitle: graph.nodes.find(node => node.id === edge.to)!.title })) }, null, 2)); return

@@ -2,8 +2,11 @@ import { validateDocument } from './persistence'
 import { validId } from './identifiers'
 import type { CanvasDocument, Conversation, Sample } from './types'
 
-export interface CodexConnection {
-  provider: 'codex'
+export const validProvider = (value: unknown): value is string =>
+  typeof value === 'string' && /^[a-z][a-z0-9-]{0,31}$/.test(value)
+
+export interface SessionConnection {
+  provider: string
   threadId: string
   title: string
   capturedAt: string
@@ -14,7 +17,7 @@ export interface LiveCanvas {
   document: CanvasDocument
   sample: Sample
   conversation: Conversation
-  connection: CodexConnection
+  connection: SessionConnection
 }
 export const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
 
@@ -23,7 +26,7 @@ export function validateLiveCanvas(value: unknown): value is LiveCanvas {
     || !validateDocument(value.document) || !isRecord(value.sample) || !isRecord(value.conversation) || !isRecord(value.connection)) return false
   const { document, sample, conversation, connection } = value
   if (sample.id !== document.id || sample.canvasId !== document.id || sample.sessionId !== document.sessionId
-    || conversation.sessionId !== document.sessionId || connection.provider !== 'codex' || connection.threadId !== document.sessionId
+    || conversation.sessionId !== document.sessionId || !validProvider(connection.provider) || connection.threadId !== document.sessionId
     || typeof connection.title !== 'string' || typeof connection.capturedAt !== 'string' || typeof conversation.title !== 'string'
     || !Array.isArray(conversation.messages) || !Array.isArray(sample.sources) || !Array.isArray(sample.nodes) || !Array.isArray(sample.edges)) return false
   const messages = new Map<string, string>()
@@ -46,7 +49,7 @@ export function validateLiveCanvas(value: unknown): value is LiveCanvas {
 }
 
 /** Rebase a local edit over a new generated revision, without losing the draft.
- * A second human writer is a conflict; a Codex update preserves our user layer.
+ * A second human writer is a conflict; a generated update preserves our user layer.
  */
 export function rebaseDraft(base: CanvasDocument, draft: CanvasDocument, latest: CanvasDocument): CanvasDocument {
   if ([draft, latest].some(doc => doc.id !== base.id || doc.sessionId !== base.sessionId)) throw new Error('画布身份不一致。')

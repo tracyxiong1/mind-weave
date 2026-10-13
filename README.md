@@ -4,19 +4,21 @@
 
 **Mindweave = mind（思考、心智）+ weave（编织）。** 面向 Codex、Claude 等 agent 的轻量会话画布，保留讨论的主题、联系、来源与未展开的支线。
 
-**当前状态：可编辑原型与 Codex 手动闭环已实现。** 可在 Codex 中整理真实对话、打开画布、修改节点，再用稳定引用读回最新内容继续讨论。无参数打开仍展示固定样例，无需额外账户、云服务或模型 API 密钥。
+**当前状态：通用 Agent Skills 安装、会话 JSON 导入与 Codex 手动闭环已实现。** 可在 Codex 中整理真实对话、打开画布、修改节点，再用稳定引用读回最新内容继续讨论。无参数打开仍展示固定样例，无需额外账户、云服务或模型 API 密钥。
 
 ## 用户安装
 
-一次安装后，在自己的项目中直接使用 `$mindweave`：
+在 Codex 中通过内置安装器安装完整 skill：
 
-```bash
-npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.2.0.tgz
+```text
+$skill-installer 从 tracyxiong1/mind-weave 安装 .agents/skills/mindweave，分支 codex/first-canvas-prototype。
 ```
 
-然后在 Codex 中请求：`$mindweave 整理当前对话并打开画布`。
+然后请求：`$mindweave 整理当前对话并打开画布`。
 
-安装会配置用户 skill；画布服务按需自动启动，数据默认在 `~/.mindweave/`，存量项目文件保持原样。需要 Node.js 22.12+ 和 Codex CLI；这个预先打包版本通过 GitHub 分发，尚未发布到 npm registry。[下载、安装与恢复说明](docs/installation.md)。
+skill 自带 CLI 和页面，只需要 Node.js 22.12+，无需克隆源码或 npm 安装。自动读取 Codex 历史时另需 Codex CLI；其他兼容 Agent Skills 的工具可安装同一目录，通过通用会话 JSON 导入。不同宿主的原生历史读取尚未提供。
+
+数据默认在 `~/.mindweave/`，查看时服务按需启动，存量项目文件保持原样。需要全局 CLI 时仍可使用 npm 安装包；尚未发布 npm registry。[安装、通用输入与恢复说明](docs/installation.md)。
 
 ## 源码开发启动
 
@@ -48,13 +50,13 @@ npm run preview
 
 ## 在 Codex 中使用
 
-安装版提供用户级 `$mindweave` skill，可在自己的项目中使用；源码仓库也自带 repo skill。请求：
+GitHub 与 npm 安装版提供完整的用户级 `$mindweave` skill，可在自己的项目中使用；源码仓库内的 repo skill 使用相同预构建入口。请求：
 
 ```text
 $mindweave 整理当前对话并打开画布
 ```
 
-Codex 只读捕获当前会话，由当前 agent 提炼带真实来源的节点与关系，再打开本地预览。安装版页面编辑保存到服务机器上的 `~/.mindweave/`；源码开发模式仍在仓库 `.mindweave/`。后续整理保留人工字段、位置、删除和合并。需要再次整理时请求 `$mindweave 更新当前画布`；它只更新数据。
+Codex 只读捕获当前会话，由当前 agent 提炼带真实来源的节点与关系，再打开本地预览。skill 页面编辑保存到服务机器上的 `~/.mindweave/`；直接运行源码 CLI 的开发模式仍在仓库 `.mindweave/`。后续整理保留人工字段、位置、删除和合并。需要再次整理时请求 `$mindweave 更新当前画布`；它只更新数据。
 
 在节点中复制引用，粘贴回 Codex 并提出问题；skill 先读取最新保存内容，再继续讨论。低层命令为 `npm run mindweave -- capture / apply / open / read / status`，具体参数、Devbox 地址、来源规则与恢复方法见 [Codex 集成说明](docs/codex-integration.md)。实际验证使用 Codex CLI 0.159.2，无需再配置模型 API 密钥；尚未提供每轮自动触发。
 
@@ -102,7 +104,7 @@ mindweave:v1:canvas:mw-branches
 
 内置样例不跨浏览器、设备、域名或端口同步；清理站点数据会丢失内容。容量不足或存储被禁用会明确显示保存失败，当前页面的编辑仍可导出。损坏或未知版本的数据不会被自动覆盖。JSON 导出用于备份，当前没有导入界面。
 
-**Codex 真实画布**保存在服务机器的运行目录 `canvases/<canvasId>.json`，安装版默认运行目录是 `~/.mindweave/`，开发模式为仓库 `.mindweave/`。浏览器另保留未确认草稿。CLI 读取服务器上最后一次成功保存的人工内容；网络失败时保留草稿并提示。不同浏览器可通过带凭据链接访问同一画布，人工编辑并发冲突会停止覆盖并提供备份恢复。私人运行数据不会打入分发包，导出的真实画布包含对话与摘录。详情见 [保存与冲突规则](docs/codex-integration.md#更新冲突与恢复)。
+**导入会话画布**保存在服务机器的运行目录 `canvases/<canvasId>.json`，安装版默认运行目录是 `~/.mindweave/`，开发模式为仓库 `.mindweave/`。浏览器另保留未确认草稿。CLI 读取服务器上最后一次成功保存的人工内容；网络失败时保留草稿并提示。不同浏览器可通过带凭据链接访问同一画布，人工编辑并发冲突会停止覆盖并提供备份恢复。私人运行数据不会打入分发包，导出的真实画布包含对话与摘录。详情见 [保存与冲突规则](docs/codex-integration.md#更新冲突与恢复)。
 
 ## 样例与键盘
 
@@ -121,7 +123,9 @@ React + TypeScript + Vite，HTML 节点与 SVG 连线，无图编辑器或同步
 ```bash
 npm run check      # 类型检查、数据测试、生产构建
 npm run test:e2e   # Chromium 交互、Codex 画布回读、持久化与恢复
-npm run test:install # 隔离安装、存量项目首次使用与完整闭环
+npm run test:skill # 独立 skill 安装、通用导入与浏览器闭环
+npm run test:install # npm 安装、存量项目首次使用与 Codex 闭环
+npm run build:skill # 更新随 GitHub skill 分发的 CLI 和页面
 ```
 
 浏览器测试优先使用 `/usr/bin/chromium`（若存在），或通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定。没有系统 Chromium 时先运行 `npx playwright install chromium`。E2E 会启动 5173 服务或复用当前服务；失败的截图与 trace 在 `test-results/`。明暗和窄视口验收截图在 `docs/validation/`。
@@ -134,6 +138,6 @@ npm run test:install # 隔离安装、存量项目首次使用与完整闭环
 - [概念图](docs/design/README.md)
 - [验证记录与截图](docs/validation/README.md)
 
-Codex 集成使用带来源的追加/更新接口，保护人工层并校验重放与过期版本。后续验证完整轮次事件与可选自动整理，再增加第二个宿主；原生 `@`、系统协议、多人协作、账户和云同步尚未提供。
+Codex 集成使用带来源的追加/更新接口，保护人工层并校验重放与过期版本。通用 JSON 输入已独立于 Codex CLI 运行；后续验证其他宿主原生历史读取、完整轮次事件与可选自动整理；原生 `@`、系统协议、多人协作、账户和云同步尚未提供。
 
 源码仓库：[tracyxiong1/mind-weave](https://github.com/tracyxiong1/mind-weave)。保留 [MIT 许可证](LICENSE)。

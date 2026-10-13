@@ -22,7 +22,7 @@ async function readState(paths: Paths): Promise<ServerState | null> {
   } catch { return null }
 }
 export const serverUrl = (state: ServerState) => `http://127.0.0.1:${state.port}`
-async function control(state: ServerState, stop = false) {
+async function control(state: ServerState, stop = false, allowLegacy = false) {
   try {
     const response = await fetch(`${serverUrl(state)}/api/mindweave/${stop ? 'stop' : 'health'}`, {
       method: stop ? 'POST' : 'GET', headers: { Authorization: `Bearer ${state.secret}` }, signal: AbortSignal.timeout(800),
@@ -30,7 +30,7 @@ async function control(state: ServerState, stop = false) {
     if (!response.ok) return false
     if (stop) return true
     const body: unknown = await response.json()
-    return isRecord(body) && body.service === 'mindweave' && body.protocol === 1
+    return isRecord(body) && body.service === 'mindweave' && (body.protocol === 2 || (allowLegacy && body.protocol === 1))
   } catch { return false }
 }
 async function clearOwnedState(paths: Paths, secret: string) {
@@ -62,6 +62,13 @@ export async function ensureServer(paths = runtimePaths()): Promise<ServerState>
   return withLock(paths.serverLock, async () => {
     const current = await readState(paths)
     if (current && await control(current)) return current
+    // A 0.2 daemon cannot validate imported providers. Replace it after verifying
+    // its private control credential, without deleting any canvas data.
+    if (current && await control(current, false, true)) {
+      if (!await control(current, true)) throw new CanvasError('旧版画布服务暂时无法停止，请稍后重试。')
+      for (let i = 0; i < 30 && await control(current, false, true); i++) await new Promise(resolve => setTimeout(resolve, 100))
+      if (await control(current, false, true)) throw new CanvasError('旧版画布服务尚未停止，请稍后重试。')
+    }
     await readFile(`${paths.assets}/index.html`).catch(() => { throw new CanvasError('安装包缺少画布页面。源码开发请运行 npm run prepare。') })
     const secret = randomBytes(32).toString('hex')
     const log = await open(paths.log, 'a', 0o600)
@@ -84,10 +91,10 @@ export async function stopServer(paths = runtimePaths()) {
   return withLock(paths.serverLock, async () => {
     const state = await readState(paths)
     if (!state) return { stopped: false }
-    if (await control(state)) {
+    if (await control(state, false, true)) {
       if (!await control(state, true)) throw new CanvasError('服务暂时无法停止，请稍后重试。')
-      for (let i = 0; i < 30 && await control(state); i++) await new Promise(resolve => setTimeout(resolve, 100))
-      if (await control(state)) throw new CanvasError('服务尚未停止，请稍后重试。')
+      for (let i = 0; i < 30 && await control(state, false, true); i++) await new Promise(resolve => setTimeout(resolve, 100))
+      if (await control(state, false, true)) throw new CanvasError('服务尚未停止，请稍后重试。')
     }
     await clearOwnedState(paths, state.secret)
     return { stopped: true }
