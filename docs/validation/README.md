@@ -4,6 +4,8 @@
 
 通用 Agent Skills 安装与跨宿主输入的后续验收见 [通用 skill 安装验收](portable-skill.md)。
 
+顶部保存提示闪烁的修复与回归验收见 [保存提示闪烁修复](save-flicker.md)。
+
 ## 环境与结果
 
 - Node.js 22.16.0、npm 10.9.2。

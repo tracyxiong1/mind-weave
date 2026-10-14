@@ -69,7 +69,7 @@ npm run mindweave -- status
 
 ## 验证结果与边界
 
-- `npm run typecheck`、`npm test`、`npm run build` 和 `npm run test:e2e`：通过。数据/协议/保存/安装保护及通用输入测试 74 项，Chromium 交互验收 18 项。另有完整的预先打包版本安装验收，见 [安装说明](installation.md)。
+- `npm run typecheck`、`npm test`、`npm run build` 和 `npm run test:e2e`：通过。数据/协议/保存/安装保护及通用输入及连续保存测试 76 项，Chromium 交互验收 19 项。另有完整的预先打包版本安装验收，见 [安装说明](installation.md)。
 - 本次真实 Codex 会话导入 11 条文本消息，提炼 6 个主题和 5 条关系；逐字核对原文摘录。
 - 在真实画布中修改标题、移动节点，复制引用，通过 CLI 读到最新人工修改；再次整理仍保留人工标题与位置，未改摘要更新，刷新保持；随后撤销校验修改恢复原内容。
 - 明暗与 480 × 800 窄视口、引用定位检查无页面错误。真实会话截图和回读输出只保存在被 Git 忽略的 `.mindweave/validation/`；公开测试只用合成文本。

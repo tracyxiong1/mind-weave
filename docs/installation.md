@@ -44,7 +44,7 @@ node "/实际安装目录/mindweave/scripts/mindweave.mjs" read 'mindweave://can
 需要终端中的全局 `mindweave` 命令时，也可安装预打包版本：
 
 ```bash
-npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.3.0.tgz
+npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.3.1.tgz
 ```
 
 它会复制完整的用户 skill，默认在 `~/.agents/skills/mindweave`；显式设置 CODEX_HOME 时使用其 skills 目录。安装版 skill 不再依赖机器专属 runtime.json 或原 npm 安装路径。npm 禁用安装脚本时运行 `mindweave setup`。尚未发布到 npm registry，不能直接使用 `npm install -g mind-weave`。

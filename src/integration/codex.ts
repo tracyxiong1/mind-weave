@@ -82,7 +82,7 @@ export async function readCodexThread(threadId: string, options: { binary?: stri
     })
   }
   try {
-    await request('initialize', { clientInfo: { name: 'mindweave', title: 'Mindweave', version: '0.3.0' }, capabilities: { experimentalApi: true } })
+    await request('initialize', { clientInfo: { name: 'mindweave', title: 'Mindweave', version: '0.3.1' }, capabilities: { experimentalApi: true } })
     child.stdin.write(`${JSON.stringify({ method: 'initialized', params: {} })}\n`)
     const summary = await request('thread/read', { threadId, includeTurns: false })
     if (!isRecord(summary) || !isRecord(summary.thread)) throw new CanvasError('Codex 会话摘要无效。')

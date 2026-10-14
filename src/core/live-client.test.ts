@@ -100,6 +100,49 @@ describe('live drafts and browser save synchronization', () => {
     expect(h.getDoc()).toEqual(server.get().document)
     expect(requests).toBe(2)
   })
+  it('quietly continues saving when view changes arrive throughout the request budget', async () => {
+    const base = recordWithGraph(), h = setup(base), server = service(base)
+    let writes = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: string, init?: RequestInit) => {
+      const result = await server.fetch(input, init)
+      if (init?.method === 'PUT' && ++writes <= 7) {
+        h.setDoc({ ...h.getDoc(), view: { ...h.getDoc().view, viewport: { x: writes * 20, y: 0, zoom: 1 } } })
+        h.client.documentChanged()
+      }
+      return result
+    }))
+    h.setDoc({ ...h.getDoc(), view: { ...h.getDoc().view, viewport: { x: 0, y: 0, zoom: 1 } } })
+    h.client.documentChanged(); await h.client.flush()
+    expect(writes).toBe(5)
+    expect(h.problems.filter(Boolean)).toEqual([])
+    // Release the pointer/wheel burst: the continuation must save the final view
+    // without waiting for another edit or the 2.5-second polling interval.
+    await vi.advanceTimersByTimeAsync(180)
+    expect(writes).toBe(8)
+    expect(server.get().document.view.viewport).toEqual({ x: 140, y: 0, zoom: 1 })
+    expect(h.getDoc()).toEqual(server.get().document)
+    expect(h.problems.filter(Boolean)).toEqual([])
+  })
+  it('yields and retries a burst of generated revisions without reporting a save failure', async () => {
+    const base = recordWithGraph(), h = setup(base)
+    let record = base, writes = 0
+    vi.stubGlobal('fetch', vi.fn(async (_input: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return response(record)
+      if (++writes <= 5) record = applyGraphUpdate(record, proposal(record, `burst-${writes}`))
+      const body = JSON.parse(String(init.body))
+      try { record = saveBrowserDocument(record, body.version, body.document); return response(record) }
+      catch { return new Response(null, { status: 409 }) }
+    }))
+    h.setDoc(execute(h.getDoc(), { type: 'edit', id: 'main', title: '保留我的标题', summary: '保留真实来源' }))
+    h.client.documentChanged(); await h.client.flush()
+    expect(writes).toBe(5)
+    expect(h.problems.filter(Boolean)).toEqual([])
+    await vi.advanceTimersByTimeAsync(180)
+    expect(writes).toBe(6)
+    expect(record.document.user.fields.main.title).toBe('保留我的标题')
+    expect(h.getDoc()).toEqual(record.document)
+    expect(h.problems.filter(Boolean)).toEqual([])
+  })
   it('saves an edit whose debounce fired while polling and never overwrites it with the poll result', async () => {
     const base = recordWithGraph(), h = setup(base), read = deferred<Response>()
     const server = service(applyGraphUpdate(base, proposal(base, 'poll-update')))

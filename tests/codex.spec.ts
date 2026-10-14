@@ -77,6 +77,50 @@ test('Codex 画布：浏览器人工修改回读、再次整理保留、刷新�
   expect(errors).toEqual([])
 })
 
+test('连续平移期间安静续存，不闪烁保存警告；真正断网仍提示并保留草稿', async ({ page }) => {
+  const record = await seed(page)
+  await page.waitForLoadState('networkidle')
+  const before = (await read(record)).document.view.viewport!
+  await page.evaluate(() => {
+    const warnings: string[] = []
+    Object.assign(window, { saveWarnings: warnings })
+    new MutationObserver(() => {
+      const text = document.querySelector('.save-warning')?.textContent
+      if (text) warnings.push(text)
+    }).observe(document.body, { childList: true, subtree: true, characterData: true })
+  })
+  let writes = 0
+  const api = `**/api/canvases/${record.document.id}`
+  const canvas = page.getByRole('main', { name: '会话画布' })
+  await page.route(api, async route => {
+    if (route.request().method() !== 'PUT') { await route.continue(); return }
+    const response = await route.fetch()
+    expect(response.status()).toBe(200)
+    if (++writes <= 7) {
+      const previous = await page.locator('.world').getAttribute('style')
+      await canvas.focus(); await page.keyboard.press('ArrowRight')
+      await expect(page.locator('.world')).not.toHaveAttribute('style', previous!)
+    }
+    await route.fulfill({ response })
+  })
+  await canvas.focus(); await page.keyboard.press('ArrowRight')
+  await expect.poll(() => writes).toBe(8)
+  await expect.poll(async () => (await read(record)).document.view.viewport!.x).toBe(before.x - 480)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { saveWarnings: string[] }).saveWarnings)).toEqual([])
+
+  await page.unroute(api)
+  await page.route(api, route => route.request().method() === 'PUT' ? route.abort() : route.continue())
+  await canvas.focus(); await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect((await read(record)).document.view.viewport!.x).toBe(before.x - 480)
+  const draft = await page.evaluate(id => JSON.parse(localStorage.getItem(`mindweave:v1:codex-draft:${id}`)!), record.document.id)
+  expect(draft.draft.view.viewport.x).toBe(before.x - 540)
+  await page.unroute(api); await page.reload()
+  await expect.poll(async () => (await read(record)).document.view.viewport!.x).toBe(before.x - 540)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
 test('真实画布离线编辑保留草稿，重新连接后保存；无访问凭据不退回样例', async ({ page, context }) => {
   const record = await seed(page), node = page.getByTestId('node-main')
   await page.route('**/api/canvases/**', route => route.abort())

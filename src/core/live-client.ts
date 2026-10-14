@@ -49,7 +49,7 @@ interface ClientOptions {
   problem: (message: string | null) => void
   interacting: () => boolean
 }
-/** Serialize browser saves and safely rebase them over Codex-only updates. */
+/** Serialize browser saves and safely rebase them over generated updates. */
 export class LiveCanvasClient {
   private pending = false
   private busy = false
@@ -62,16 +62,21 @@ export class LiveCanvasClient {
       this.options.storage.setItem(draftKey(this.record.document.id), JSON.stringify({ base: this.record.document, draft: this.options.getDocument(), ...(sent ? { sent } : {}) }))
     } catch { this.options.problem('浏览器草稿备份失败。请保持页面打开，等待本地服务保存或导出备份。') }
   }
+  private scheduleFlush() {
+    clearTimeout(this.timer)
+    this.timer = setTimeout(() => { void this.flush() }, 180)
+  }
   documentChanged() {
     if (this.disposed || same(this.record.document, this.options.getDocument())) return
     this.pending = true; this.backup()
     if (this.conflict) return
-    clearTimeout(this.timer)
-    this.timer = setTimeout(() => { void this.flush() }, 180)
+    this.scheduleFlush()
   }
   async flush() {
     if (this.busy || this.disposed || this.conflict || !this.pending || this.options.interacting()) return
+    clearTimeout(this.timer)
     this.busy = true
+    let continueSaving = false
     try {
       for (let attempts = 0; this.pending && attempts < 5; attempts++) {
         if (this.options.interacting()) return
@@ -102,10 +107,15 @@ export class LiveCanvasClient {
         this.options.receive({ ...saved, document: this.pending ? draft : saved.document })
         this.backup(); this.options.problem(null)
       }
-      if (this.pending) throw new Error('画布持续更新中。草稿已保留，请稍后重试保存。')
+      // New view edits and generated revisions may outlive one bounded batch.
+      // They are queued work, not a failed save; yield before continuing.
+      continueSaving = this.pending
     } catch (error) {
       if (!this.disposed) this.options.problem(error instanceof Error ? error.message : '本地服务保存失败，当前草稿已保留。')
-    } finally { this.busy = false }
+    } finally {
+      this.busy = false
+      if (continueSaving && !this.disposed && !this.conflict) this.scheduleFlush()
+    }
   }
   async poll() {
     if (this.busy || this.disposed || this.options.interacting()) return

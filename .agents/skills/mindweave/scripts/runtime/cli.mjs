@@ -576,7 +576,7 @@ async function readCodexThread(threadId, options = {}) {
     });
   }
   try {
-    await request("initialize", { clientInfo: { name: "mindweave", title: "Mindweave", version: "0.3.0" }, capabilities: { experimentalApi: true } });
+    await request("initialize", { clientInfo: { name: "mindweave", title: "Mindweave", version: "0.3.1" }, capabilities: { experimentalApi: true } });
     child.stdin.write(`${JSON.stringify({ method: "initialized", params: {} })}
 `);
     const summary2 = await request("thread/read", { threadId, includeTurns: false });
