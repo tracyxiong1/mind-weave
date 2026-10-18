@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 
-export type IconName = 'plus' | 'minus' | 'fit' | 'undo' | 'redo' | 'sun' | 'moon' | 'system' | 'link' | 'close' | 'more' | 'chevron' | 'copy' | 'source' | 'edit' | 'merge' | 'trash' | 'help' | 'download' | 'note'
+export type IconName = 'plus' | 'minus' | 'fit' | 'undo' | 'redo' | 'sun' | 'moon' | 'system' | 'link' | 'close' | 'more' | 'chevron' | 'copy' | 'source' | 'edit' | 'merge' | 'trash' | 'help' | 'download' | 'note' | 'arrange' | 'relations'
 const paths: Record<IconName, React.ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
   minus: <path d="M5 12h14" />,
@@ -22,6 +22,8 @@ const paths: Record<IconName, React.ReactNode> = {
   help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .5-1.5 1-1.5 2m0 3v.1" /></>,
   download: <><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" /></>,
   note: <><path d="M14 3H4v18h16V9M17 3v6m-3-3h6M8 12h8m-8 4h5" /></>,
+  arrange: <><rect x="3" y="9" width="5" height="6" rx="1" /><rect x="16" y="3" width="5" height="6" rx="1" /><rect x="16" y="15" width="5" height="6" rx="1" /><path d="M8 12h4m4-6h-4v12h4" /></>,
+  relations: <><circle cx="5" cy="5" r="2" /><circle cx="19" cy="5" r="2" /><circle cx="12" cy="19" r="2" /><path d="M7 5h10M6 7l5 10M18 7l-5 10" /></>,
 }
 export function Icon({ name }: { name: IconName }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>

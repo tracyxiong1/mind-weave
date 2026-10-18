@@ -104,6 +104,7 @@ export type Command =
   | { type: 'edit'; id: string; title: string; summary: string }
   | { type: 'note'; id: string; title: string; summary: string; position: Position }
   | { type: 'move'; id: string; position: Position }
+  | { type: 'arrange'; positions: Record<string, Position> }
   | { type: 'connect'; id: string; from: string; to: string }
   | { type: 'remove-edge'; id: string }
   | { type: 'merge'; from: string; into: string }

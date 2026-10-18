@@ -4,12 +4,14 @@ import { loadDocument, saveDocument, storageKey, type StoragePort } from './core
 import { referenceFor, resolveReference } from './core/references'
 import { edgePath, fitView, NODE_WIDTH, zoomAt, type Size } from './core/geometry'
 import { DEFAULT_NODE_HEIGHT, freePosition, layoutNodes } from './core/layout'
+import { arrangeBranches, CANVAS_ROOT_ID, positionsWithRoot, readingForest } from './core/branches'
 import type { CanvasDocument, Command, Conversation, Position, RenderNode, Sample, Viewport } from './core/types'
 import type { LiveCanvas } from './core/live'
 import { LiveCanvasClient, restoreLiveDraft } from './core/live-client'
 import { Dialog } from './components/Dialog'
 import { Icon, IconButton } from './components/Icon'
 import { NodeCard, type NodeAction } from './components/NodeCard'
+import { CanvasRoot } from './components/CanvasRoot'
 
 const storage: StoragePort = {
   getItem: key => window.localStorage.getItem(key),
@@ -46,6 +48,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   const [editing, setEditing] = useState<string | null>(null)
   const [menu, setMenu] = useState<string | null>(null)
   const [sources, setSources] = useState<string[]>([])
+  const [showAllRelations, setShowAllRelations] = useState(false)
   const [closed, setClosed] = useState(false)
   const [heights, setHeights] = useState<Record<string, number>>({})
   const [size, setSize] = useState<Size>({ width: window.innerWidth, height: window.innerHeight })
@@ -57,8 +60,16 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   const interaction = useRef({ blocked, panel, editing })
   interaction.current = { blocked, panel, editing }
   const graph = useMemo(() => materialize(doc), [doc.generated, doc.user])
+  const forest = useMemo(() => readingForest(graph.nodes, graph.edges), [graph])
+  const relatedIds = useMemo(() => {
+    if (!doc.view.selected) return null
+    return new Set([doc.view.selected, ...graph.edges.filter(edge => edge.from === doc.view.selected || edge.to === doc.view.selected)
+      .flatMap(edge => [edge.from, edge.to])])
+  }, [doc.view.selected, graph.edges])
   const layout = useMemo(() => layoutNodes(graph.nodes.map(node => node.id), doc.view.positions, heights), [graph.nodes, doc.view.positions, heights])
-  const displayPositions = drag ? { ...drag.positions, [drag.id]: drag.position } : layout
+  const displayPositions = positionsWithRoot(forest, drag ? { ...drag.positions, [drag.id]: drag.position } : layout, heights)
+  const canvasRoot = displayPositions[CANVAS_ROOT_ID]
+  const canvasTitle = (sourceData.conversation?.title ?? live?.connection.title ?? '').replace(/^\d{4}｜[^｜]+｜/, '').trim() || '会话总览'
   const emphasizedId = useMemo(() => {
     // A structural reading anchor, rather than an inferred importance score.
     const degrees = new Map<string, number>()
@@ -126,9 +137,10 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   }, [])
   const fit = useCallback(() => {
     setDoc(current => {
-      const nodes = materialize(current).nodes
-      const positions = layoutNodes(nodes.map(node => node.id), current.view.positions, heights)
-      const viewport = fitView(nodes.map(n => positions[n.id]), nodes.map(n => heights[n.id] ?? DEFAULT_NODE_HEIGHT), size)
+      const { nodes, edges } = materialize(current)
+      const positions = positionsWithRoot(readingForest(nodes, edges), layoutNodes(nodes.map(node => node.id), current.view.positions, heights), heights)
+      const ids = Object.keys(positions)
+      const viewport = fitView(ids.map(id => positions[id]), ids.map(id => heights[id] ?? DEFAULT_NODE_HEIGHT), size)
       return { ...current, view: { ...current.view, viewport } }
     })
   }, [heights, size])
@@ -144,6 +156,18 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
       return true
     } catch (error) { setToast(error instanceof Error ? error.message : '操作未完成。'); return false }
   }, [])
+  function arrange() {
+    const current = docRef.current
+    const currentGraph = materialize(current)
+    const currentForest = readingForest(currentGraph.nodes, currentGraph.edges)
+    const positions = arrangeBranches(currentForest, heights)
+    if (!run({ type: 'arrange', positions })) return
+    const viewPositions = positionsWithRoot(currentForest, positions, heights)
+    const ids = Object.keys(viewPositions)
+    const viewport = fitView(ids.map(id => viewPositions[id]), ids.map(id => heights[id] ?? DEFAULT_NODE_HEIGHT), size)
+    changeView(view => ({ ...view, selected: null, viewport }))
+    setToast('已按分支整理布局，可一步撤销。')
+  }
   const focusNode = useCallback((node: RenderNode) => {
     const current = docRef.current
     const position = layoutNodes(materialize(current).nodes.map(node => node.id), current.view.positions, heights)[node.id]
@@ -315,12 +339,23 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
       }}>
       <div className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
         <svg className="edges" width="1" height="1" aria-label="节点关系">
+          {canvasRoot && forest.roots.map(id => <g key={`root-${id}`} data-root-edge={id} aria-hidden="true"
+            className={`${relatedIds ? 'muted-edge' : ''} ${graph.nodes.find(node => node.id === id)?.kind === 'suggestion' ? 'suggested-edge' : ''}`}>
+            <path className="edge-line" d={edgePath(canvasRoot, heights[CANVAS_ROOT_ID] ?? DEFAULT_NODE_HEIGHT, positionFor(id), heights[id] ?? DEFAULT_NODE_HEIGHT)} />
+          </g>)}
           {graph.edges.map(edge => {
             const from = positionFor(edge.from); const to = positionFor(edge.to)
-            const path = edgePath(from, heights[edge.from] ?? 100, to, heights[edge.to] ?? 100)
+            const path = edgePath(from, heights[edge.from] ?? DEFAULT_NODE_HEIGHT, to, heights[edge.to] ?? DEFAULT_NODE_HEIGHT,
+              graph.nodes.filter(node => node.id !== edge.from && node.id !== edge.to)
+                .map(node => ({ position: positionFor(node.id), height: heights[node.id] ?? DEFAULT_NODE_HEIGHT })))
             const fromTitle = graph.nodes.find(node => node.id === edge.from)?.title
             const toTitle = graph.nodes.find(node => node.id === edge.to)?.title
-            return <g key={edge.id} data-edge={edge.id} data-testid={`edge-${edge.id}`} className={edge.suggested ? 'suggested-edge' : ''}>
+            const primary = forest.edgeIds.has(edge.id)
+            const related = edge.from === doc.view.selected || edge.to === doc.view.selected
+            const visible = primary || edge.userCreated || showAllRelations || related
+            return <g key={edge.id} data-edge={edge.id} data-testid={`edge-${edge.id}`}
+              className={`${edge.suggested ? 'suggested-edge' : ''} ${primary ? '' : 'secondary-edge'} ${related ? 'focused-edge' : relatedIds ? 'muted-edge' : ''} ${visible ? '' : 'hidden-edge'}`}>
+              <title>{`${fromTitle} → ${toTitle}：${edge.label}`}</title>
               <path className="edge-line" d={path} />
               <path className="edge-hit" d={path} tabIndex={-1} role="button" aria-label={`关系：${fromTitle} → ${toTitle}`}
                 onClick={event => { event.stopPropagation(); setPanel({ type: 'edge', edgeId: edge.id }) }}
@@ -328,8 +363,9 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
             </g>
           })}
         </svg>
-        {graph.nodes.map(node => <NodeCard key={node.id} node={node} sample={sourceData.sample} conversation={sourceData.conversation} live={Boolean(live)} position={positionFor(node.id)} emphasized={node.id === emphasizedId}
-          selected={doc.view.selected === node.id} expanded={doc.view.expanded.includes(node.id)} editing={editing === node.id} menuOpen={menu === node.id} showSources={sources.includes(node.id)}
+        {canvasRoot && <CanvasRoot title={canvasTitle} position={canvasRoot} onMeasure={measure} />}
+        {graph.nodes.map(node => <NodeCard key={node.id} node={node} sample={sourceData.sample} conversation={sourceData.conversation} live={Boolean(live)} position={positionFor(node.id)} emphasized={!canvasRoot && node.id === emphasizedId}
+          selected={doc.view.selected === node.id} unrelated={Boolean(relatedIds && !relatedIds.has(node.id))} expanded={doc.view.expanded.includes(node.id)} editing={editing === node.id} menuOpen={menu === node.id} showSources={sources.includes(node.id)}
           onSelect={() => changeView(state => ({ ...state, selected: node.id }))} onExpand={() => toggleExpanded(node)}
           onEdit={() => { setEditing(node.id); setMenu(null) }} onSave={(title, summary) => { if (run({ type: 'edit', id: node.id, title, summary })) finishEditing(node.id) }} onCancel={() => finishEditing(node.id)}
           onMenu={() => { changeView(state => ({ ...state, selected: node.id })); setMenu(menu === node.id ? null : node.id) }} onAction={selectedAction => action(node, selectedAction)}
@@ -340,6 +376,9 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
       <div className="toolbar top-controls" aria-label="画布操作">
         <IconButton icon="note" label="新增笔记" onClick={() => setPanel({ type: 'note' })} />
         <IconButton icon="link" label="定位引用" onClick={() => setPanel({ type: 'resolve' })} />
+        <IconButton icon="arrange" label="整理布局" title="按分支整理布局（可撤销）" onClick={arrange} disabled={!graph.nodes.length || Boolean(editing)} />
+        <IconButton icon="relations" label="显示全部关联" title={showAllRelations ? '收起补充关联' : '显示全部关联'} aria-pressed={showAllRelations}
+          onClick={() => setShowAllRelations(value => !value)} disabled={!graph.edges.length} />
         <IconButton icon={doc.view.theme === 'system' ? 'system' : doc.view.theme === 'light' ? 'sun' : 'moon'} label={`主题：${themeLabel}`}
           onClick={() => changeView(state => ({ ...state, theme: state.theme === 'system' ? 'light' : state.theme === 'light' ? 'dark' : 'system' }))} />
         <IconButton icon="help" label="使用说明与保存" onClick={() => setPanel({ type: 'help' })} />
@@ -360,6 +399,9 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     {panel && <Dialog key={panel.type} title={panel.type === 'help' ? '使用说明与保存' : panel.type === 'resolve' ? '定位稳定引用' : panel.type === 'copy' ? '复制稳定引用' : panel.type === 'note' ? '新增用户笔记' : panel.type === 'target' ? panel.operation === 'merge' ? '合并节点' : '建立关系' : '节点关系'} onClose={() => setPanel(null)}>
       {panel.type === 'help' && <div className="help-content">
         <p>在画布中回看和修正思路。选中节点不会发送消息；继续交流仍在原 agent 对话里。</p>
+        <p>多个主题分支统一从会话主题根节点展开；已有单一根节点的画布直接沿用。整理布局后，根节点位于最左侧，一级分支对齐排列。</p>
+        <p>默认沿分支显示连线。选中节点可查看它的全部直接关联，其余内容淡化；点击空白或按 Esc 返回总览。右上角“显示全部关联”可展开补充连线，“管理关系”始终列出完整关系。主干仅用于阅读，不改变已保存的关系。</p>
+        <p>“整理布局”将当前节点按分支从左到右重新排列，并适应画布；包括手动移动过的节点，可一步撤销恢复原来的位置。</p>
         <dl className="shortcuts"><dt>阅读</dt><dd>点击箭头展开，查看原文或复制引用。连接较多的讨论节点略作强调，支线摘要展开后显示。</dd><dt>编辑</dt><dd>双击节点，或聚焦后按 F2。</dd><dt>移动</dt><dd>拖动节点；Ctrl / ⌘ + 方向键移动 10 像素，配合 Shift 移动 40 像素。重叠时就近避让；展开详情会临时推开相邻节点，折叠后回到保存的位置。</dd><dt>平移 / 缩放</dt><dd>拖动空白、滚动或方向键平移；Ctrl / ⌘ + 滚轮缩放，也可用左下角按钮。</dd><dt>撤销 / 重做</dt><dd>Ctrl / ⌘ + Z；配合 Shift 重做。保留最近 40 步。</dd><dt>键盘</dt><dd>Tab 切换焦点，Enter 展开，Delete 删除；Esc 取消编辑或关闭菜单。</dd></dl>
         <h3>{live ? '已连接会话画布' : '保存在此浏览器'}</h3>
         {live ? <><p>{sourceData.conversation?.title ?? live.connection.title}</p><p>人工编辑、位置和主题保存在运行 Mindweave 的机器上，可通过稳定引用读取最新内容。浏览器同时保留未保存草稿。新的整理会保留人工修改，并在空闲时更新画布。</p></>

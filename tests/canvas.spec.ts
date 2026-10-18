@@ -71,6 +71,114 @@ test('折叠时突出中心主题，支线摘要按需出现且内容不变', as
   expect(current.history).toEqual(original.history)
 })
 
+test('补充关联按需显示，选中高亮直接关系，完整关系与原数据始终保留', async ({ page }) => {
+  const saved = await stored(page)
+  saved.generated.edges['cross-one'] = { id: 'cross-one', from: 'structure', to: 'relations', label: '跨分支关联一' }
+  saved.generated.edges['cross-two'] = { id: 'cross-two', from: 'two-views', to: 'mixing', label: '跨分支关联二' }
+  await page.addInitScript(({ key, saved }) => localStorage.setItem(key, JSON.stringify(saved)), { key, saved })
+  await page.reload()
+  const one = page.getByTestId('edge-cross-one')
+  const two = page.getByTestId('edge-cross-two')
+  await expect(one).toBeHidden(); await expect(two).toBeHidden()
+  await page.getByTestId('node-structure').click()
+  await expect(one).toBeVisible(); await expect(two).toBeHidden()
+  await expect(page.getByTestId('node-mixing')).toHaveClass(/unrelated/)
+  await expect(page.getByTestId('node-relations')).not.toHaveClass(/unrelated/)
+  const crossedCards = await one.locator('.edge-line').evaluate(element => {
+    const path = element as SVGPathElement
+    const cards = [...document.querySelectorAll<HTMLElement>('[data-node]')]
+      .filter(node => !['structure', 'relations'].includes(node.dataset.node!))
+      .map(node => ({ id: node.dataset.node, x: parseFloat(node.style.left), y: parseFloat(node.style.top), height: node.offsetHeight }))
+    const hits = new Set<string>()
+    for (let length = 0; length <= path.getTotalLength(); length += 2) {
+      const point = path.getPointAtLength(length)
+      for (const card of cards) {
+        if (point.x > card.x && point.x < card.x + 300 && point.y > card.y && point.y < card.y + card.height) hits.add(card.id!)
+      }
+    }
+    return [...hits]
+  })
+  expect(crossedCards).toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(one).toBeHidden()
+  await expect(page.locator('.node.unrelated')).toHaveCount(0)
+  const toggle = page.getByRole('button', { name: '显示全部关联', exact: true })
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await expect(one).toBeVisible(); await expect(two).toBeVisible()
+  await toggle.click()
+  await expect(two).toBeHidden()
+  await menuAction(page, 'relations', '管理关系')
+  await expect(page.getByRole('dialog')).toContainText('跨分支关联一')
+  await page.getByRole('dialog').getByRole('button', { name: '关闭' }).click()
+  await menuAction(page, 'two-views', '管理关系')
+  await expect(page.getByRole('dialog')).toContainText('跨分支关联二')
+  const current = await stored(page)
+  expect(current.generated).toEqual(saved.generated)
+  expect(current.user).toEqual(saved.user)
+  expect(current.view.positions).toEqual(saved.view.positions)
+  expect(current.history).toEqual(saved.history)
+})
+
+test('整理布局按分支对齐，保留完整内容，刷新后可一步撤销恢复原位置', async ({ page }) => {
+  const original = await stored(page)
+  await expect(page.getByTestId('canvas-root')).toHaveCount(0)
+  await page.getByRole('button', { name: '整理布局', exact: true }).click()
+  await expectCardsSeparated(page)
+  await expect.poll(async () => (await stored(page)).history.past.at(-1)?.label).toBe('整理布局')
+  const arranged = await stored(page)
+  expect(arranged.generated).toEqual(original.generated)
+  expect(arranged.user).toEqual(original.user)
+  expect(arranged.view.positions.structure.x).toBe(arranged.view.positions['two-views'].x)
+  expect(arranged.view.positions.structure.x).toBeGreaterThan(arranged.view.positions.comparison.x + 300)
+  expect(arranged.view.selected).toBeNull()
+  await page.reload()
+  await expectCardsSeparated(page)
+  expect((await stored(page)).view.positions).toEqual(arranged.view.positions)
+  await page.getByRole('button', { name: '撤销整理布局', exact: true }).click()
+  await expect.poll(async () => (await stored(page)).view.positions).toEqual(original.view.positions)
+  await expectCardsSeparated(page)
+})
+
+test('独立分支统一从会话主题根节点展开，视口包含总根且刷新、撤销保持正确', async ({ page }) => {
+  const saved = await stored(page)
+  delete saved.generated.edges['e-branches-1']
+  delete saved.generated.edges['e-branches-5']
+  await page.addInitScript(({ key, saved }) => {
+    if (sessionStorage.getItem('root-fixture-loaded')) return
+    localStorage.setItem(key, JSON.stringify(saved))
+    sessionStorage.setItem('root-fixture-loaded', 'true')
+  }, { key, saved })
+  await page.reload()
+  const root = page.getByTestId('canvas-root')
+  await expect(root).toHaveCount(1)
+  await expect(root.getByRole('heading')).toHaveText(conversations.branches.title)
+  await expect(page.locator('[data-root-edge]')).toHaveCount(3)
+  await expect(page.locator('[data-root-edge="mixing"]')).toHaveClass(/suggested-edge/)
+  await page.getByRole('button', { name: '整理布局', exact: true }).click()
+  await expectCardsSeparated(page)
+  const rootBox = (await root.boundingBox())!
+  const branchBoxes = await Promise.all(['context', 'comparison', 'mixing'].map(id => page.getByTestId(`node-${id}`).boundingBox()))
+  expect(rootBox.x).toBeGreaterThanOrEqual(16)
+  expect(rootBox.y).toBeGreaterThanOrEqual(76)
+  for (const branch of branchBoxes) {
+    expect(branch!.x).toBeGreaterThan(rootBox.x + rootBox.width)
+    expect(branch!.x).toBeCloseTo(branchBoxes[0]!.x)
+  }
+  const arranged = await stored(page)
+  expect(Object.keys(arranged.view.positions).sort()).toEqual(Object.keys(saved.view.positions).sort())
+  expect(arranged.generated).toEqual(saved.generated)
+  expect(arranged.user).toEqual(saved.user)
+  expect(arranged.history.past).toHaveLength(saved.history.past.length + 1)
+  await page.reload()
+  await expect(root).toHaveCount(1)
+  expect((await stored(page)).view.positions).toEqual(arranged.view.positions)
+  await page.getByRole('button', { name: '撤销整理布局', exact: true }).click()
+  await expect.poll(async () => (await stored(page)).view.positions).toEqual(saved.view.positions)
+  await page.getByRole('button', { name: '适应画布', exact: true }).click()
+  await expect(root).toBeInViewport()
+})
+
 test('展开原文、完整消息与多个详情均不遮挡，折叠恢复且不改保存锚点', async ({ page }) => {
   const original = await stored(page)
   const context = page.getByTestId('node-context')

@@ -12,6 +12,7 @@ interface Props {
   position: Position
   emphasized: boolean
   selected: boolean
+  unrelated: boolean
   expanded: boolean
   editing: boolean
   menuOpen: boolean
@@ -52,7 +53,7 @@ export function NodeCard(props: Props) {
   ]
   return <article ref={ref} id={`node-${node.id}`} data-node={node.id} data-testid={`node-${node.id}`} tabIndex={0}
     aria-label={node.title} aria-keyshortcuts="Enter F2 Delete" aria-describedby={showSummary && !editing ? `summary-${node.id}` : undefined}
-    className={`node ${emphasized ? 'emphasized' : ''} ${selected ? 'selected' : ''} ${node.kind === 'suggestion' ? 'suggested' : ''} ${editing ? 'editing' : ''}`}
+    className={`node ${emphasized ? 'emphasized' : ''} ${selected ? 'selected' : ''} ${props.unrelated ? 'unrelated' : ''} ${node.kind === 'suggestion' ? 'suggested' : ''} ${editing ? 'editing' : ''}`}
     style={{ left: position.x, top: position.y }} onPointerDown={props.onDrag} onClick={props.onSelect}
     onDoubleClick={event => { if (!(event.target as HTMLElement).closest('button, input, textarea, details, .context-menu')) { event.stopPropagation(); props.onEdit() } }}
     onKeyDown={props.onKey} onFocus={props.onFocus}>

@@ -3,6 +3,7 @@ import { samples, conversations, excerptFor } from '../data/samples'
 import { canonicalId, createDocument, execute, materialize, redo, undo } from './model'
 import { referenceFor, resolveReference, parseReference } from './references'
 import { validateDocument } from './persistence'
+import { arrangeBranches, readingForest } from './branches'
 
 const seed = () => createDocument(samples.branches)
 const reference = referenceFor('mw-branches', 'comparison')
@@ -53,6 +54,30 @@ describe('用户内容与视图保护', () => {
     expect(doc.user).toEqual(original.user)
     expect(doc.view.positions.comparison).toEqual({ x: 102, y: 209, pinned: true })
     expect(undo(doc).view.positions.comparison).toEqual(original.view.positions.comparison)
+  })
+  it('整理整个分支只记一步，刷新后仍能恢复手动位置且不改内容和关系', () => {
+    const original = execute(seed(), { type: 'move', id: 'structure', position: { x: -200, y: 850, pinned: true } })
+    const graph = materialize(original)
+    const positions = arrangeBranches(readingForest(graph.nodes, graph.edges), {})
+    const doc = execute(original, { type: 'arrange', positions })
+    expect(doc.generated).toEqual(original.generated)
+    expect(doc.user).toEqual(original.user)
+    expect(doc.history.past.length).toBe(original.history.past.length + 1)
+    expect(doc.history.past.at(-1)?.label).toBe('整理布局')
+    expect(doc.view.positions).toEqual(positions)
+    const restored = undo(JSON.parse(JSON.stringify(doc)))
+    expect(restored.view.positions).toEqual(original.view.positions)
+    expect(redo(restored).view.positions).toEqual(positions)
+    expectCoherent(doc)
+  })
+  it('整理包含无效坐标或已删除节点时整批失败', () => {
+    const doc = execute(seed(), { type: 'delete', id: 'structure' })
+    const snapshot = structuredClone(doc)
+    expect(() => execute(doc, { type: 'arrange', positions: {
+      comparison: { x: 300, y: 20, pinned: true }, structure: { x: 0, y: 0, pinned: true },
+    } })).toThrow()
+    expect(() => execute(doc, { type: 'arrange', positions: { comparison: { x: Infinity, y: 20, pinned: true } } })).toThrow()
+    expect(doc).toEqual(snapshot)
   })
   it('用户笔记没有对话来源；新增与撤销不会修改生成数据', () => {
     const original = seed()

@@ -36,17 +36,26 @@ p { line-height: 1.7; }
 .edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .edge-line { fill: none; stroke: var(--line); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .suggested-edge .edge-line { stroke-dasharray: 5 5; }
+.secondary-edge .edge-line { stroke-dasharray: 2 5; }
+.secondary-edge.suggested-edge .edge-line { stroke-dasharray: 5 5; }
+.muted-edge { opacity: .2; }
+.focused-edge .edge-line { stroke: var(--strong-border); stroke-width: 1.8; }
+.hidden-edge { display: none; }
 .edge-hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: stroke; cursor: pointer; vector-effect: non-scaling-stroke; }
 .edge-hit:hover, .edge-hit:focus-visible { stroke: var(--strong-border); stroke-width: 2.5; outline: none; }
 .node { position: absolute; width: 300px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 18px 20px; cursor: grab; user-select: none; }
 .node.emphasized { background: var(--anchor-surface); border-color: var(--anchor-border); padding: 22px 20px; }
 .node.selected, .node:focus-visible { border-color: var(--strong-border); }
+.node.unrelated { opacity: .5; }
+.node.unrelated:hover, .node.unrelated:focus-within { opacity: 1; }
 .node:focus-visible { outline-width: 1px; }
 .node:active { cursor: grabbing; }
 .node.suggested { border-style: dashed; }
 .node-heading { display: flex; align-items: flex-start; gap: 12px; }
 .node h2 { font-size: 16px; line-height: 1.5; font-weight: 550; margin: 0; flex: 1; overflow-wrap: anywhere; }
 .node.emphasized h2 { font-size: 19px; font-weight: 650; line-height: 1.45; letter-spacing: -.2px; }
+.canvas-root .root-caption { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.canvas-root h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .node-heading h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .node:has(.node-details) .node-heading h2 { display: block; }
 .expand-button { padding: 2px 0; border: 0; background: transparent; color: var(--muted); margin-right: -4px; }
@@ -85,6 +94,7 @@ input, textarea { touch-action: auto; }
 .top-controls { top: 22px; right: 24px; }
 .zoom-controls { bottom: 24px; left: 24px; }
 .icon-button { width: 36px; height: 36px; padding: 8px; border: 0; border-radius: 5px; background: transparent; }
+.icon-button[aria-pressed="true"] { background: var(--hover); color: var(--text); }
 .control-divider { width: 1px; height: 22px; margin: 0 4px; background: var(--divider); }
 .sources { margin-top: 20px; }
 .sources .source-caption { margin: 0; font-size: 11px; font-weight: 400; color: var(--muted); }

@@ -8,7 +8,7 @@ export const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`
 const areas: EditArea[] = ['fields', 'notes', 'edges', 'removedEdges', 'tombstones', 'aliases', 'positions']
 const labels: Record<Command['type'], string> = {
   edit: '编辑节点', note: '新增笔记', move: '移动节点', connect: '建立关系',
-  'remove-edge': '移除关系', merge: '合并节点', delete: '删除节点',
+  'remove-edge': '移除关系', merge: '合并节点', delete: '删除节点', arrange: '整理布局',
 }
 
 export function createDocument(sample: Sample): CanvasDocument {
@@ -149,6 +149,14 @@ export function execute(doc: CanvasDocument, command: Command): CanvasDocument {
       const node = find(command.id)
       if (![command.position.x, command.position.y].every(value => Number.isFinite(value) && Math.abs(value) <= 1e7)) throw new Error('位置无效。')
       next.view.positions[node.id] = { ...command.position, pinned: true }
+      break
+    }
+    case 'arrange': {
+      for (const [id, position] of Object.entries(command.positions)) {
+        const node = find(id)
+        if (![position.x, position.y].every(value => Number.isFinite(value) && Math.abs(value) <= 1e7)) throw new Error('位置无效。')
+        next.view.positions[node.id] = { x: position.x, y: position.y, pinned: true }
+      }
       break
     }
     case 'connect': {
