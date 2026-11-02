@@ -30,6 +30,7 @@ type Panel =
   | { type: 'edge'; edgeId: string }
 type Gesture =
   | { type: 'node'; pointerId: number; x: number; y: number; id: string; position: Position; positions: Record<string, Position>; zoom: number; moved: boolean }
+  | { type: 'pan'; pointerId: number; x: number; y: number; viewport: Viewport; moved: boolean }
 type CanvasKey = Pick<globalThis.KeyboardEvent, 'target' | 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'preventDefault'>
 
 function download(text: string, name: string) {
@@ -62,6 +63,8 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   const [toast, setToast] = useState('')
   const canvasRef = useRef<HTMLElement>(null)
   const gesture = useRef<Gesture | null>(null)
+  const draggedClick = useRef<string | null>(null)
+  const pannedEdge = useRef(false)
   const liveClient = useRef<LiveCanvasClient | null>(null)
   const interaction = useRef({ blocked, panel, editing })
   interaction.current = { blocked, panel, editing }
@@ -146,6 +149,11 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   }, [closed])
   const measure = useCallback((id: string, height: number) => {
     setHeights(old => old[id] === height ? old : { ...old, [id]: height })
+  }, [])
+  useEffect(() => {
+    const cancel = () => { gesture.current = null; setDrag(null) }
+    window.addEventListener('blur', cancel)
+    return () => window.removeEventListener('blur', cancel)
   }, [])
   const fit = useCallback(() => {
     setDoc(current => {
@@ -245,6 +253,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   function startNodeDrag(event: PointerEvent<HTMLElement>, node: RenderNode) {
     if (event.button !== 0 || (event.target as HTMLElement).closest('button, input, textarea, details, .node-details, .context-menu')) return
     event.stopPropagation()
+    draggedClick.current = null
     changeView(view => ({ ...view, selected: node.id }))
     if (editing) return
     gesture.current = { type: 'node', pointerId: event.pointerId, x: event.clientX, y: event.clientY, id: node.id, position: positionFor(node.id), positions: displayPositions, zoom: view.zoom, moved: false }
@@ -257,6 +266,10 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     const dy = event.clientY - active.y
     if (Math.hypot(dx, dy) > 3 || active.moved) {
       active.moved = true
+      if (active.type === 'pan') {
+        changeView(state => ({ ...state, viewport: { ...active.viewport, x: active.viewport.x + dx, y: active.viewport.y + dy } }))
+        return
+      }
       const desired = { x: active.position.x + dx / active.zoom, y: active.position.y + dy / active.zoom, pinned: true }
       setDrag({ id: active.id, position: vacantPosition(active.id, desired, active.positions), positions: active.positions })
     }
@@ -264,6 +277,8 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   function endPointer(event: PointerEvent<HTMLElement>, cancelled = false) {
     const active = gesture.current
     if (!active || active.pointerId !== event.pointerId) return
+    if (active.type === 'pan') pannedEdge.current = active.moved || cancelled
+    else if (active.moved) draggedClick.current = active.id
     if (active.type === 'node' && active.moved && !cancelled) {
       const desired = { x: active.position.x + (event.clientX - active.x) / active.zoom, y: active.position.y + (event.clientY - active.y) / active.zoom, pinned: true }
       run({ type: 'move', id: active.id, position: vacantPosition(active.id, desired, active.positions) })
@@ -272,7 +287,6 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   }
   function toggleExpanded(node: RenderNode) {
     changeView(state => ({ ...state, selected: node.id, expanded: state.expanded.includes(node.id) ? state.expanded.filter(id => id !== node.id) : [...state.expanded, node.id] }))
-    if (!doc.view.expanded.includes(node.id) && size.width < 700) focusNode(node)
   }
   function finishEditing(id: string) {
     setEditing(null)
@@ -281,7 +295,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   function keepFocusVisible(event: FocusEvent<HTMLElement>) {
     // Node focus may reveal an off-screen branch. Focusing an inner button must
     // not move the button between pointer-down and click.
-    if (event.target !== event.currentTarget) return
+    if (event.target !== event.currentTarget || !event.target.matches(':focus-visible')) return
     const rect = event.target.getBoundingClientRect()
     const x = rect.left < 16 ? 16 - rect.left : rect.right > size.width - 16 ? size.width - 16 - rect.right : 0
     const y = rect.top < 76 ? 76 - rect.top : rect.bottom > size.height - 76 ? size.height - 76 - rect.bottom : 0
@@ -347,6 +361,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   return <>
     {closed ? <div className="closed-preview"><span>Mindweave</span><button type="button" onClick={() => setClosed(false)}>打开画布</button></div> : <main ref={canvasRef} className="canvas" aria-label="会话画布" tabIndex={0}
       onPointerMove={movePointer} onPointerUp={event => endPointer(event)} onPointerCancel={event => endPointer(event, true)}
+      onLostPointerCapture={event => endPointer(event, true)}
       onKeyDown={event => {
         if (event.target !== event.currentTarget) return
         panKey(event)
@@ -375,7 +390,13 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
               <title>{`${fromTitle} → ${toTitle}：${edge.label}`}</title>
               <path className="edge-line" d={path} />
               <path className="edge-hit" d={path} tabIndex={-1} role="button" aria-label={`关系：${fromTitle} → ${toTitle}`}
-                onClick={event => { event.stopPropagation(); setPanel({ type: 'edge', edgeId: edge.id }) }}
+                onPointerDown={event => {
+                  if (event.button !== 0) return
+                  event.stopPropagation(); pannedEdge.current = false
+                  gesture.current = { type: 'pan', pointerId: event.pointerId, x: event.clientX, y: event.clientY, viewport: view, moved: false }
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                }}
+                onClick={event => { event.stopPropagation(); if (pannedEdge.current) { pannedEdge.current = false; return }; setPanel({ type: 'edge', edgeId: edge.id }) }}
                 onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setPanel({ type: 'edge', edgeId: edge.id }) } }} />
             </g>
           })}
@@ -384,7 +405,8 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
         {graph.nodes.map(node => <NodeCard key={node.id} node={node} sample={sourceData.sample} conversation={sourceData.conversation} live={Boolean(live)} position={positionFor(node.id)} emphasized={!canvasRoot && node.id === emphasizedId}
           selected={doc.view.selected === node.id} unrelated={Boolean(relatedIds && !relatedIds.has(node.id))} expanded={doc.view.expanded.includes(node.id)} editing={editing === node.id} menuOpen={menu === node.id} showSources={sources.includes(node.id)}
           onSelect={() => changeView(state => ({ ...state, selected: node.id }))} onExpand={() => toggleExpanded(node)}
-          onEdit={() => { setEditing(node.id); setMenu(null) }} onSave={(title, summary) => { if (run({ type: 'edit', id: node.id, title, summary })) finishEditing(node.id) }} onCancel={() => finishEditing(node.id)}
+          onActivate={() => { if (draggedClick.current === node.id) { draggedClick.current = null; return }; toggleExpanded(node) }}
+          onEdit={() => { changeView(state => ({ ...state, expanded: [...new Set([...state.expanded, node.id])] })); setEditing(node.id); setMenu(null) }} onSave={(title, summary) => { if (run({ type: 'edit', id: node.id, title, summary })) finishEditing(node.id) }} onCancel={() => finishEditing(node.id)}
           onMenu={() => { changeView(state => ({ ...state, selected: node.id })); setMenu(menu === node.id ? null : node.id) }} onAction={selectedAction => action(node, selectedAction)}
           onCopy={() => void copy(node)} onSources={() => setSources(old => old.includes(node.id) ? old.filter(id => id !== node.id) : [...old, node.id])}
           onDrag={event => startNodeDrag(event, node)} onKey={event => nodeKey(event, node)} onFocus={keepFocusVisible} onMeasure={measure} />)}
@@ -406,6 +428,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
       <div className="toolbar zoom-controls" aria-label="视图控制">
         <IconButton icon="minus" label="缩小" onClick={() => zoom(1 / 1.2)} disabled={view.zoom <= 0.3} />
         <IconButton icon="fit" label="适应画布" onClick={fit} />
+        <button className="zoom-value" aria-label="恢复 100% 缩放" title="恢复 100% 缩放" onClick={() => zoom(1 / view.zoom)}>{Math.round(view.zoom * 100)}%</button>
         <IconButton icon="plus" label="放大" onClick={() => zoom(1.2)} disabled={view.zoom >= 2} />
         <span className="control-divider" />
         <IconButton icon="undo" label={`撤销${doc.history.past.at(-1)?.label ?? ''}`} disabled={!doc.history.past.length} onClick={() => setDoc(undo)} />
@@ -420,7 +443,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
         <p>多个主题分支统一从会话主题根节点展开；已有单一根节点的画布直接沿用。整理布局后，根节点位于最左侧，一级分支对齐排列。</p>
         <p>默认沿分支显示连线。选中节点可查看它的全部直接关联，其余内容淡化；点击空白或按 Esc 返回总览。右上角“显示全部关联”可展开补充连线，“管理关系”始终列出完整关系。主干仅用于阅读，不改变已保存的关系。</p>
         <p>“整理布局”将当前节点按分支从左到右重新排列，并适应画布；包括手动移动过的节点，可一步撤销恢复原来的位置。</p>
-        <dl className="shortcuts"><dt>阅读</dt><dd>点击箭头展开，查看原文或复制引用。连接较多的讨论节点略作强调，支线摘要展开后显示。</dd><dt>编辑</dt><dd>双击节点，或聚焦后按 F2。</dd><dt>移动</dt><dd>拖动节点；Ctrl / ⌘ + 方向键移动 10 像素，配合 Shift 移动 40 像素。重叠时就近避让；展开详情会临时推开相邻节点，折叠后回到保存的位置。</dd><dt>平移 / 缩放</dt><dd>拖动空白、滚动或方向键平移；Ctrl / ⌘ + 滚轮缩放，也可用左下角按钮。</dd><dt>撤销 / 重做</dt><dd>Ctrl / ⌘ + Z；配合 Shift 重做。保留最近 40 步。</dd><dt>键盘</dt><dd>Tab 切换焦点，Enter 展开，Delete 删除；Esc 取消编辑或关闭菜单。</dd></dl>
+        <dl className="shortcuts"><dt>阅读</dt><dd>点击标题、卡片空白或箭头展开，查看原文或复制引用。展开与折叠保持当前视角。连接较多的讨论节点略作强调，支线摘要展开后显示。</dd><dt>编辑</dt><dd>双击节点，或聚焦后按 F2。</dd><dt>移动</dt><dd>拖动节点；Ctrl / ⌘ + 方向键移动 10 像素，配合 Shift 移动 40 像素。重叠时就近避让；展开详情会临时推开相邻节点，折叠后回到保存的位置。</dd><dt>平移 / 缩放</dt><dd>拖动空白、滚动或方向键平移；长详情内滚动阅读。Ctrl / ⌘ + 滚轮缩放，也可用左下角按钮；点击百分比恢复 100%。</dd><dt>撤销 / 重做</dt><dd>Ctrl / ⌘ + Z；配合 Shift 重做。保留最近 40 步。</dd><dt>键盘</dt><dd>Tab 切换焦点，Enter 展开，Delete 删除；Esc 取消编辑或关闭菜单。</dd></dl>
         <h3>{live ? '已连接会话画布' : '保存在此浏览器'}</h3>
         {live ? <><p>{sourceData.conversation?.title ?? live.connection.title}</p><p>人工编辑、位置和主题保存在运行 Mindweave 的机器上，可通过稳定引用读取最新内容。浏览器同时保留未保存草稿。新的整理会保留人工修改，并在空闲时更新画布。</p></>
           : <p>画布、人工修改、位置、视口和主题自动保存在当前地址的 localStorage。关闭或刷新后仍可恢复；不同浏览器、设备、域名或端口之间不共享，清理站点数据会删除保存内容。</p>}

@@ -13,7 +13,7 @@ async function menuAction(page: Page, id: string, action: string) {
   const node = page.getByTestId(`node-${id}`)
   await node.click()
   await node.getByRole('button', { name: /的操作$/ }).click()
-  await node.getByRole('button', { name: action, exact: true }).click()
+  await page.getByRole('group', { name: '节点操作', exact: true }).getByRole('button', { name: action, exact: true }).click()
 }
 async function locate(page: Page, reference: string) {
   await page.getByRole('button', { name: '定位引用', exact: true }).click()
@@ -488,6 +488,7 @@ test('390px 窄预览保持可读，可编辑、查看来源、平移到其他�
   await page.getByTestId('node-structure').getByRole('button', { name: '展开 层级展开与跨主题关联', exact: true }).click()
   await expect(page.getByTestId('node-structure').getByRole('button', { name: '查看原文', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '适应画布', exact: true }).click()
+  await page.keyboard.press('Tab')
   await page.getByTestId('node-mixing').focus()
   const focused = (await page.getByTestId('node-mixing').boundingBox())!
   expect(focused.x).toBeGreaterThanOrEqual(16); expect(focused.x + focused.width).toBeLessThanOrEqual(374)
