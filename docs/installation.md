@@ -7,12 +7,14 @@
 在 Codex 中请求：
 
 ```text
-$skill-installer 从 tracyxiong1/mind-weave 安装 .agents/skills/mindweave，分支 codex/first-canvas-prototype。
+$skill-installer 从 tracyxiong1/mind-weave 安装 .agents/skills/mindweave，分支 main。
 ```
 
-当前分支名含 `/`，请分别提供仓库、分支与目录，避免把它误解析为 GitHub 链接中的一级分支。安装器只复制该目录，其所有运行文件都在目录内；安装过程中不执行构建或启动服务。安装后下一轮可以调用 `$mindweave`；未出现时重新启动 Codex。
+`main` 包含当前 Excalidraw 画布与交互修复。安装器只复制该目录，其所有运行文件都在目录内；安装过程中不执行构建或启动服务。安装后下一轮可以调用 `$mindweave`；未出现时重新启动 Codex。
 
 其他兼容 Agent Skills 的工具可整体复制 `.agents/skills/mindweave` 到其 skill 发现位置。`SKILL.md` 及 scripts/references/assets 是通用部分，`agents/openai.yaml` 是可选的 Codex 展示元数据。运行位置不固定，含空格的路径和移动后的 skill 均可用。
+
+项目级与个人安装版分别更新：`git pull` 更新仓库中的 `.agents/skills/mindweave`，个人安装版需另行同步完整目录。两份同时被宿主发现时，可能分别以项目名和 Personal 显示；仅更新 `SKILL.md` 不会更新页面和运行时。
 
 ## 整理、预览与回读
 
@@ -39,12 +41,12 @@ node "/实际安装目录/mindweave/scripts/mindweave.mjs" read 'mindweave://can
 
 画布与私人运行数据默认在 `~/.mindweave/`，不写入使用中的项目或 skill 目录。每轮自动整理、其他宿主原生历史适配、原生补全与系统协议尚未提供。
 
-## 可选的 npm CLI 安装
+## 历史 npm CLI 安装包
 
-需要终端中的全局 `mindweave` 命令时，也可安装预打包版本：
+仓库保留的 `0.3.1` 压缩包是历史构建，未包含后续 Excalidraw 迁移与交互修复。使用最新版请选择前文 `main` 分支的完整 skill；终端可直接调用该目录中的 `scripts/mindweave.mjs`。需要复现历史全局 CLI 时可安装：
 
 ```bash
-npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/first-canvas-prototype/releases/mind-weave-0.3.1.tgz
+npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/main/releases/mind-weave-0.3.1.tgz
 ```
 
 它会复制完整的用户 skill，默认在 `~/.agents/skills/mindweave`；显式设置 CODEX_HOME 时使用其 skills 目录。安装版 skill 不再依赖机器专属 runtime.json 或原 npm 安装路径。npm 禁用安装脚本时运行 `mindweave setup`。尚未发布到 npm registry，不能直接使用 `npm install -g mind-weave`。
