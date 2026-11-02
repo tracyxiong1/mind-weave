@@ -1,0 +1,5 @@
+.agents/skills/mindweave/scripts/runtime/cli.mjs linguist-generated=true
+.agents/skills/mindweave/assets/web/** linguist-generated=true -whitespace
+# Preserve upstream license text and generated third-party payloads verbatim.
+.agents/skills/mindweave/assets/licenses/third-party.txt linguist-generated=true -whitespace
+build/*-license.txt -whitespace

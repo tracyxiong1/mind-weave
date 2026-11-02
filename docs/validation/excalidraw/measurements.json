@@ -1,0 +1,166 @@
+{
+  "date": "2026-11-02",
+  "origin": "http://127.0.0.1:5181",
+  "environment": {
+    "browser": "151.0.7922.108",
+    "node": "v22.16.0",
+    "viewport": "1440x1000",
+    "headless": true
+  },
+  "build": {
+    "totalBytes": 21169404,
+    "fontBytes": 13188212,
+    "jsBytes": 7821484,
+    "jsGzipBytes": 2570958
+  },
+  "runs": [
+    {
+      "nodes": 6,
+      "elapsedMs": 613.3999999761581,
+      "cardDOMCount": 6,
+      "resources": [
+        {
+          "name": "/assets/index-G12LqMDj.js",
+          "bytes": 429863
+        },
+        {
+          "name": "/assets/rolldown-runtime-Dd_uD5pT.js",
+          "bytes": 627
+        },
+        {
+          "name": "/assets/index-CUc5wL_i.css",
+          "bytes": 25992
+        },
+        {
+          "name": "/assets/file-open-002ab408-BHUWm0Sh.js",
+          "bytes": 526
+        },
+        {
+          "name": "/assets/directory-open-4ed118d0-1i309Asm.js",
+          "bytes": 768
+        },
+        {
+          "name": "/assets/file-save-745eba88-Bwdfz6OZ.js",
+          "bytes": 856
+        },
+        {
+          "name": "/assets/zh-CN-LNUGB5OW-CSm_s1ME.js",
+          "bytes": 8830
+        },
+        {
+          "name": "/assets/roundRect-D01gJrlt.js",
+          "bytes": 996
+        },
+        {
+          "name": "/favicon.ico",
+          "bytes": 0
+        },
+        {
+          "name": "/assets/Assistant-Regular-DVxZuzxb.woff2",
+          "bytes": 20232
+        }
+      ],
+      "frames": 91,
+      "p50FrameMs": 16.700000000000045,
+      "p95FrameMs": 16.799999999999727,
+      "errors": [],
+      "external": []
+    },
+    {
+      "nodes": 100,
+      "elapsedMs": 620,
+      "cardDOMCount": 20,
+      "resources": [
+        {
+          "name": "/assets/index-G12LqMDj.js",
+          "bytes": 429863
+        },
+        {
+          "name": "/assets/rolldown-runtime-Dd_uD5pT.js",
+          "bytes": 627
+        },
+        {
+          "name": "/assets/index-CUc5wL_i.css",
+          "bytes": 25992
+        },
+        {
+          "name": "/assets/file-open-002ab408-BHUWm0Sh.js",
+          "bytes": 526
+        },
+        {
+          "name": "/assets/directory-open-4ed118d0-1i309Asm.js",
+          "bytes": 768
+        },
+        {
+          "name": "/assets/file-save-745eba88-Bwdfz6OZ.js",
+          "bytes": 856
+        },
+        {
+          "name": "/assets/zh-CN-LNUGB5OW-CSm_s1ME.js",
+          "bytes": 8830
+        },
+        {
+          "name": "/assets/roundRect-D01gJrlt.js",
+          "bytes": 996
+        },
+        {
+          "name": "/assets/Assistant-Regular-DVxZuzxb.woff2",
+          "bytes": 20232
+        }
+      ],
+      "frames": 91,
+      "p50FrameMs": 16.700000000000045,
+      "p95FrameMs": 16.700000000000045,
+      "errors": [],
+      "external": []
+    },
+    {
+      "nodes": 500,
+      "elapsedMs": 913.8999999761581,
+      "cardDOMCount": 20,
+      "resources": [
+        {
+          "name": "/assets/index-G12LqMDj.js",
+          "bytes": 429863
+        },
+        {
+          "name": "/assets/rolldown-runtime-Dd_uD5pT.js",
+          "bytes": 627
+        },
+        {
+          "name": "/assets/index-CUc5wL_i.css",
+          "bytes": 25992
+        },
+        {
+          "name": "/assets/file-open-002ab408-BHUWm0Sh.js",
+          "bytes": 526
+        },
+        {
+          "name": "/assets/directory-open-4ed118d0-1i309Asm.js",
+          "bytes": 768
+        },
+        {
+          "name": "/assets/file-save-745eba88-Bwdfz6OZ.js",
+          "bytes": 856
+        },
+        {
+          "name": "/assets/zh-CN-LNUGB5OW-CSm_s1ME.js",
+          "bytes": 8830
+        },
+        {
+          "name": "/assets/roundRect-D01gJrlt.js",
+          "bytes": 996
+        },
+        {
+          "name": "/assets/Assistant-Regular-DVxZuzxb.woff2",
+          "bytes": 20232
+        }
+      ],
+      "frames": 91,
+      "p50FrameMs": 16.699999999999818,
+      "p95FrameMs": 16.700000000000273,
+      "errors": [],
+      "external": []
+    }
+  ]
+}

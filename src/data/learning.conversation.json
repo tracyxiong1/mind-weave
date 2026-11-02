@@ -1,0 +1,31 @@
+{
+  "sessionId": "session-learning",
+  "title": "学习检索增强生成",
+  "messages": [
+    {
+      "id": "m-learning-1",
+      "role": "user",
+      "text": "我想理解 RAG 的基本流程，先别讲太多术语。它怎样让模型用到我的文档？"
+    },
+    {
+      "id": "m-learning-2",
+      "role": "assistant",
+      "text": "可以把 RAG 看成先检索，再生成：把文档切成片段并建索引，收到问题后检索相关片段，再把片段和问题交给模型。"
+    },
+    {
+      "id": "m-learning-3",
+      "role": "user",
+      "text": "建索引和检索是同一步吗？找到了片段就一定回答正确吗？"
+    },
+    {
+      "id": "m-learning-4",
+      "role": "assistant",
+      "text": "建索引通常发生在准备文档时，检索发生在回答问题时。检索不保证答案正确：可能漏掉关键片段，片段也可能过时，模型仍可能误解。"
+    },
+    {
+      "id": "m-learning-5",
+      "role": "assistant",
+      "text": "如果你愿意，之后可以探索如何评估检索效果；目前还没有讨论评估方法。"
+    }
+  ]
+}

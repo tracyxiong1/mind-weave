@@ -1,0 +1,31 @@
+{
+  "sessionId": "session-planning",
+  "title": "本地原型存储方案",
+  "messages": [
+    {
+      "id": "m-planning-1",
+      "role": "user",
+      "text": "首版只给我自己用，需要刷新后还能看到编辑过的画布，不做账号和云同步。"
+    },
+    {
+      "id": "m-planning-2",
+      "role": "assistant",
+      "text": "可以比较 localStorage 和 IndexedDB。localStorage 接口简单但同步读写；IndexedDB 适合更大的结构化数据，接入成本也更高。"
+    },
+    {
+      "id": "m-planning-3",
+      "role": "user",
+      "text": "先用 localStorage，数据量不大。生成结果与我的修改要分开保存。"
+    },
+    {
+      "id": "m-planning-4",
+      "role": "assistant",
+      "text": "那首版采用 localStorage，按画布 ID 存储版本化 JSON。需要保留人工编辑、删除记录和合并映射；如果保存失败应明确提示。"
+    },
+    {
+      "id": "m-planning-5",
+      "role": "user",
+      "text": "以后数据变多时再考虑 IndexedDB。浏览器清理站点数据会丢失内容，这个限制要写清楚。"
+    }
+  ]
+}
