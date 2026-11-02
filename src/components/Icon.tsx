@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 
-export type IconName = 'plus' | 'minus' | 'fit' | 'undo' | 'redo' | 'sun' | 'moon' | 'system' | 'link' | 'close' | 'more' | 'chevron' | 'copy' | 'source' | 'edit' | 'merge' | 'trash' | 'help' | 'download' | 'note' | 'arrange' | 'relations'
+export type IconName = 'plus' | 'minus' | 'fit' | 'undo' | 'redo' | 'sun' | 'moon' | 'system' | 'link' | 'search' | 'close' | 'more' | 'chevron' | 'copy' | 'source' | 'edit' | 'merge' | 'trash' | 'help' | 'download' | 'note' | 'arrange' | 'relations'
 const paths: Record<IconName, React.ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
   minus: <path d="M5 12h14" />,
@@ -11,6 +11,7 @@ const paths: Record<IconName, React.ReactNode> = {
   moon: <path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" />,
   system: <><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8m-4-4v4" /></>,
   link: <><path d="m10 13 4-4m-7 6-1 1a4 4 0 0 0 6 6l3-3a4 4 0 0 0 0-6m2-4 1-1a4 4 0 0 0-6-6L9 5a4 4 0 0 0 0 6" transform="translate(0 -1)" /></>,
+  search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
   close: <path d="m6 6 12 12M6 18 18 6" />,
   more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
   chevron: <path d="m9 5 7 7-7 7" />,

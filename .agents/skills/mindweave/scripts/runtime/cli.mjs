@@ -761,6 +761,7 @@ function canvasMiddleware(store2) {
 }
 
 // src/integration/http.ts
+var SERVER_PROTOCOL = 3;
 function createCanvasServer(options) {
   const middleware = canvasMiddleware(options.store);
   const server = createServer((request, response) => {
@@ -804,7 +805,7 @@ function createCanvasServer(options) {
           return;
         }
         response.setHeader("Content-Type", "application/json");
-        response.end(JSON.stringify({ service: "mindweave", protocol: 2 }));
+        response.end(JSON.stringify({ service: "mindweave", protocol: SERVER_PROTOCOL }));
         return;
       }
       middleware(request, response, () => {
@@ -825,18 +826,18 @@ function createCanvasServer(options) {
           return;
         }
         if (path === "/" || path === "/index.html") path = "/index.html";
-        else if (path !== "/favicon.svg" && !/^\/assets\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(path)) {
+        else if (path !== "/favicon.svg" && path !== "/THIRD-PARTY-NOTICES.txt" && !/^\/assets\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(path) && !/^\/fonts\/Assistant\/Assistant-(?:Regular|Medium|SemiBold|Bold)\.woff2$/.test(path)) {
           response.statusCode = 404;
           response.end();
           return;
         }
         try {
           const body = await readFile3(join3(options.assets, path.slice(1)));
-          const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2" };
+          const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8" };
           response.setHeader("Content-Type", mime[extname(path)] ?? "application/octet-stream");
           response.setHeader("X-Content-Type-Options", "nosniff");
           response.setHeader("Referrer-Policy", "no-referrer");
-          response.setHeader("Cache-Control", path === "/index.html" ? "no-store" : "public, max-age=31536000, immutable");
+          response.setHeader("Cache-Control", path === "/index.html" ? "no-store" : path.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache");
           response.end(request.method === "HEAD" ? void 0 : body);
         } catch {
           response.statusCode = 404;
@@ -869,7 +870,7 @@ async function control(state, stop = false, allowLegacy = false) {
     if (!response.ok) return false;
     if (stop) return true;
     const body = await response.json();
-    return isRecord2(body) && body.service === "mindweave" && (body.protocol === 2 || allowLegacy && body.protocol === 1);
+    return isRecord2(body) && body.service === "mindweave" && (body.protocol === SERVER_PROTOCOL || allowLegacy && (body.protocol === 1 || body.protocol === 2));
   } catch {
     return false;
   }

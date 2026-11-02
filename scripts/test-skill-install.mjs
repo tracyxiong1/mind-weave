@@ -105,8 +105,8 @@ try {
   assert(!existsSync(join(home, 'server.json')), 'capture and apply must stay quiet')
   await assert.rejects(run(['capture', '--input', input, '--thread', 'another']), /不能混用/)
 
-  // Simulate an authenticated old daemon to verify automatic upgrade instead of
-  // reusing a 0.2 server that can only validate Codex records.
+  // The previous daemon can read generic records but cannot serve the new
+  // renderer's resources. Verify it is upgraded with the data left intact.
   const secret = randomBytes(32).toString('hex')
   legacy = createServer((request, response) => {
     if (request.headers.authorization !== `Bearer ${secret}`) { response.statusCode = 403; response.end(); return }
@@ -115,7 +115,7 @@ try {
       setImmediate(() => { legacy.close(); legacy.closeIdleConnections(); setTimeout(() => legacy.closeAllConnections(), 100).unref() })
       return
     }
-    response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ service: 'mindweave', protocol: 1 }))
+    response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ service: 'mindweave', protocol: 2 }))
   })
   legacy.listen(0, '127.0.0.1'); await once(legacy, 'listening')
   const oldPort = legacy.address().port
@@ -128,9 +128,16 @@ try {
 
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined) })
   const context = await browser.newContext({ viewport: { width: 1200, height: 800 }, permissions: ['clipboard-read', 'clipboard-write'] })
-  const page = await context.newPage(), errors = []
+  const page = await context.newPage(), errors = [], external = []
   page.on('pageerror', error => errors.push(error.message))
+  await page.route('https://**/*', route => { external.push(route.request().url()); return route.abort() })
   await page.goto(opened.previewUrl)
+  await expect(page.locator('[data-engine="excalidraw"]')).toHaveAttribute('data-ready', 'true')
+  await expect(page.locator('.canvas-editor canvas')).toHaveCount(2)
+  const font = await fetch(new URL('/fonts/Assistant/Assistant-Regular.woff2', opened.previewUrl))
+  assert.equal(font.status, 200); assert.equal(font.headers.get('content-type'), 'font/woff2')
+  const notices = await (await fetch(new URL('/THIRD-PARTY-NOTICES.txt', opened.previewUrl))).text()
+  assert(notices.includes('Excalidraw core') && notices.includes('Assistant UI font') && notices.includes('roughjs@'))
   const node = page.getByTestId('node-main')
   await expect(node).toBeVisible(); await expect(page).not.toHaveURL(/access=/)
   await node.getByRole('button', { name: '展开 回到最初的思路', exact: true }).click()
@@ -166,6 +173,7 @@ try {
     await page.emulateMedia({ colorScheme: 'dark' }); await page.screenshot({ path: join(process.env.MINDWEAVE_SKILL_SCREENSHOTS, 'portable-skill-dark.png') })
   }
   assert.deepEqual(errors, [])
+  assert.deepEqual(external, [], 'installed canvas must work without external resources')
   await context.close(); await browser.close(); browser = undefined
   await run(['stop'])
   const moved = join(sandbox, 'moved skills with spaces', 'mindweave'); await mkdir(dirname(moved), { recursive: true })

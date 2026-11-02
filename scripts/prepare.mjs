@@ -16,6 +16,7 @@ if (existsSync(resolve(root, 'src/integration/cli.ts'))) {
   await rm(resolve(root, 'skills'), { recursive: true, force: true })
   await cp(resolve(root, '.agents/skills/mindweave'), resolve(root, 'skills/mindweave'), { recursive: true })
   await mkdir(resolve(root, 'licenses'), { recursive: true })
+  await cp(resolve(root, 'dist/THIRD-PARTY-NOTICES.txt'), resolve(root, 'licenses/third-party.txt'))
   for (const name of ['react', 'react-dom', 'scheduler', 'esbuild']) {
     await cp(resolve(root, 'node_modules', name, name === 'esbuild' ? 'LICENSE.md' : 'LICENSE'), resolve(root, 'licenses', `${name}.txt`))
   }

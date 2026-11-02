@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures/browser'
 import { randomUUID } from 'node:crypto'
 import { unlink } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -17,6 +18,7 @@ async function seed(page: Page) {
   await store.change(record.document.id, () => record)
   await page.goto(`/?canvas=${record.document.id}&access=${record.accessToken}`)
   await expect(page.getByTestId('node-main')).toBeVisible()
+  await expect(page.locator('[data-engine="excalidraw"]')).toHaveAttribute('data-ready', 'true')
   await expect(page).not.toHaveURL(/access=/)
   await expect.poll(async () => (await store.read(record.document.id))!.document.view.viewport).not.toBeNull()
   return record

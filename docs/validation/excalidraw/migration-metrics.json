@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-02",
+  "scope": "Production main canvas; single fresh Chromium context, six default example nodes. Not a capacity or sustained frame-rate benchmark.",
+  "browser": "151.0.7922.108",
+  "buildBytes": {
+    "all": 8604634,
+    "js": 7838022,
+    "gzipJS": 2577769,
+    "woff2": 162288
+  },
+  "readyMs": 584.0999999642372,
+  "cardDOM": 6,
+  "requestedEncodedBytes": 474759,
+  "errors": [],
+  "external": [],
+  "failed": [],
+  "resources": [
+    {
+      "url": "http://127.0.0.1:4173/assets/index-C2wnDNG_.js",
+      "encodedBodySize": 436760,
+      "transferSize": 437060
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/rolldown-runtime-Dd_uD5pT.js",
+      "encodedBodySize": 627,
+      "transferSize": 927
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/index-BY9NOoly.css",
+      "encodedBodySize": 25167,
+      "transferSize": 25467
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/file-open-002ab408-BHUWm0Sh.js",
+      "encodedBodySize": 526,
+      "transferSize": 826
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/directory-open-4ed118d0-1i309Asm.js",
+      "encodedBodySize": 768,
+      "transferSize": 1068
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/file-save-745eba88-Bwdfz6OZ.js",
+      "encodedBodySize": 856,
+      "transferSize": 1156
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/zh-CN-LNUGB5OW-DhpOiy-K.js",
+      "encodedBodySize": 8828,
+      "transferSize": 9128
+    },
+    {
+      "url": "http://127.0.0.1:4173/assets/roundRect-D01gJrlt.js",
+      "encodedBodySize": 996,
+      "transferSize": 1296
+    },
+    {
+      "url": "http://127.0.0.1:4173/favicon.svg",
+      "encodedBodySize": 231,
+      "transferSize": 531
+    }
+  ]
+}

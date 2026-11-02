@@ -16,6 +16,7 @@ export async function buildSkill(root) {
   await cp(resolve(root, 'dist'), resolve(skill, 'assets/web'), { recursive: true })
   await mkdir(resolve(skill, 'assets/licenses'), { recursive: true })
   await cp(resolve(root, 'LICENSE'), resolve(skill, 'assets/licenses/mindweave.txt'))
+  await cp(resolve(root, 'dist/THIRD-PARTY-NOTICES.txt'), resolve(skill, 'assets/licenses/third-party.txt'))
   for (const name of ['react', 'react-dom', 'scheduler']) {
     await cp(resolve(root, 'node_modules', name, 'LICENSE'), resolve(skill, `assets/licenses/${name}.txt`))
   }

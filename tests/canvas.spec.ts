@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures/browser'
 import { readFile } from 'node:fs/promises'
 import { mkdirSync } from 'node:fs'
 import type { CanvasDocument } from '../src/core/types'
@@ -50,6 +51,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
   // Playwright gives each test a fresh browser context and isolated localStorage.
   await expect(page.getByTestId('node-comparison')).toBeVisible()
+  await expect(page.locator('[data-engine="excalidraw"]')).toHaveAttribute('data-ready', 'true')
   await expect.poll(async () => (await stored(page)).view.viewport).not.toBeNull()
 })
 
@@ -144,6 +146,9 @@ test('独立分支统一从会话主题根节点展开，视口包含总根且�
   const saved = await stored(page)
   delete saved.generated.edges['e-branches-1']
   delete saved.generated.edges['e-branches-5']
+  // A valid business relation may share the old virtual-root edge prefix.
+  saved.generated.edges['root-context'] = { ...saved.generated.edges['e-branches-2'], id: 'root-context' }
+  delete saved.generated.edges['e-branches-2']
   await page.addInitScript(({ key, saved }) => {
     if (sessionStorage.getItem('root-fixture-loaded')) return
     localStorage.setItem(key, JSON.stringify(saved))
@@ -165,6 +170,20 @@ test('独立分支统一从会话主题根节点展开，视口包含总根且�
     expect(branch!.x).toBeGreaterThan(rootBox.x + rootBox.width)
     expect(branch!.x).toBeCloseTo(branchBoxes[0]!.x)
   }
+  // Both connections must be painted by the native renderer, even when their
+  // business and synthetic IDs would otherwise overlap.
+  await expect.poll(() => page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.excalidraw__canvas.static')!
+    const rect = canvas.getBoundingClientRect(), ratio = canvas.width / rect.width
+    return ['[data-root-edge="context"] .edge-line', '[data-edge="root-context"] .edge-line'].map(selector => {
+      const path = document.querySelector<SVGPathElement>(selector)!
+      const point = path.getPointAtLength(path.getTotalLength() / 2)
+      const screen = new DOMPoint(point.x, point.y).matrixTransform(path.getScreenCTM()!)
+      const pixels = canvas.getContext('2d')!.getImageData(Math.round((screen.x - rect.left) * ratio) - 3, Math.round((screen.y - rect.top) * ratio) - 3, 7, 7).data
+      for (let index = 0; index < pixels.length; index += 4) if (pixels[index + 3] > 80 && Math.max(pixels[index], pixels[index + 1], pixels[index + 2]) < 225) return true
+      return false
+    })
+  })).toEqual([true, true])
   const arranged = await stored(page)
   expect(Object.keys(arranged.view.positions).sort()).toEqual(Object.keys(saved.view.positions).sort())
   expect(arranged.generated).toEqual(saved.generated)

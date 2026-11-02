@@ -120,6 +120,11 @@ dialog::backdrop { background: #00000030; }
 .dialog-heading .icon-button { margin: -5px -8px -5px 0; }
 dialog p { color: var(--muted); font-size: 13px; }
 .reference-input { font-family: ui-monospace, "SFMono-Regular", monospace; font-size: 12px; min-height: 95px; word-break: break-all; }
+.node-search-results { display: grid; gap: 6px; max-height: 240px; overflow-y: auto; margin-top: 12px; }
+.node-search-results button { text-align: left; }
+.node-search-results strong, .node-search-results small { display: block; }
+.node-search-results strong { font-size: 13px; font-weight: 550; }
+.node-search-results small { margin-top: 5px; color: var(--muted); font-size: 12px; }
 .error-text { color: var(--danger); font-size: 12px; }
 .help-content h3 { font-size: 13px; font-weight: 550; margin-top: 25px; }
 .help-content p { font-size: 12px; }

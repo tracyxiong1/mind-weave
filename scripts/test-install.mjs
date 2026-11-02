@@ -112,9 +112,16 @@ createInterface({input:process.stdin}).on('line', line => {
 
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined) })
   const context = await browser.newContext({ viewport: { width: 1200, height: 800 }, permissions: ['clipboard-read', 'clipboard-write'] })
-  const page = await context.newPage(), errors = []
+  const page = await context.newPage(), errors = [], external = []
   page.on('pageerror', error => errors.push(error.message))
+  await page.route('https://**/*', route => { external.push(route.request().url()); return route.abort() })
   await page.goto(opened.previewUrl)
+  await expect(page.locator('[data-engine="excalidraw"]')).toHaveAttribute('data-ready', 'true')
+  await expect(page.locator('.canvas-editor canvas')).toHaveCount(2)
+  const font = await fetch(new URL('/fonts/Assistant/Assistant-Regular.woff2', opened.previewUrl))
+  assert.equal(font.status, 200); assert.equal(font.headers.get('content-type'), 'font/woff2')
+  const notices = await (await fetch(new URL('/THIRD-PARTY-NOTICES.txt', opened.previewUrl))).text()
+  assert(notices.includes('Excalidraw core') && notices.includes('Assistant UI font') && notices.includes('roughjs@'))
   const node = page.getByTestId('node-main')
   await expect(node).toBeVisible(); await expect(page).not.toHaveURL(/access=/)
   await node.locator('h2').dblclick(); await page.getByRole('textbox', { name: '节点标题' }).fill('用户修改的标题')
@@ -135,7 +142,8 @@ createInterface({input:process.stdin}).on('line', line => {
   await expect(node.locator('h2')).toHaveText('用户修改的标题')
   assert.deepEqual((await record()).document.view.positions.main, position)
   await page.reload(); await expect(node.locator('h2')).toHaveText('用户修改的标题')
-  assert.deepEqual(errors, []); await context.close(); await browser.close(); browser = undefined
+  assert.deepEqual(errors, []); assert.deepEqual(external, [])
+  await context.close(); await browser.close(); browser = undefined
   assert.equal((await exec('git', ['status', '--porcelain=v1'], { cwd: project })).stdout, '')
   const readback = await skill(['read', reference]); assert.equal(readback.excerpts[0].excerpt, '请整理已有对话，保留真实来源。')
   await run(['stop']); await assert.rejects(fetch(opened.previewUrl))

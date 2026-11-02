@@ -55,7 +55,7 @@ npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/fi
 
 ## 配置与恢复
 
-- `MINDWEAVE_HOME` 指定数据目录；`stop` 停止本地服务，保留所有画布。新版本查看时会验证并停止不支持通用会话的旧服务，再启动新版，不删除数据。
+- `MINDWEAVE_HOME` 指定数据目录；`stop` 停止本地服务，保留所有画布。新版本查看时会验证旧服务并按需重启，以加载匹配的会话接口和 Excalidraw 资源，不删除数据。
 - Devbox 中安装与存储位于 Devbox，仍需转发服务返回链接中的端口。可用 `MINDWEAVE_PORT` 固定端口，再用 `open CANVAS_ID --url http://localhost:转发端口` 返回用户侧地址；服务不会自动配置 SSH 转发。
 - GitHub skill 与 npm skill 默认使用用户数据目录。源码 `npm run mindweave` 仍使用仓库 `.mindweave/`；旧开发数据不自动搬移，切换前可导出需要保留的人工修改。
 - 验收覆盖 Linux、Chromium 和含空格的路径；尚未进行真实 macOS/Windows 或其他 agent 的原生历史接口验收。通用 JSON 导入已独立于 Codex 验证。
@@ -64,9 +64,12 @@ npm install -g https://github.com/tracyxiong1/mind-weave/raw/refs/heads/codex/fi
 
 修改 src 或页面后运行 `npm run build:skill`，将更新后的 scripts/runtime 与 assets/web 一起提交，GitHub 安装才会取得匹配的运行文件。`npm pack` 的 prepare 也会同步构建它们，并打包 CLI 与完整 skill。
 
+当前源码构建使用 Excalidraw 主画布。预构建页面包含编辑器、所用的 Assistant UI 字体和第三方声明；安装后无需下载 npm 依赖或访问字体 CDN。已有 `schemaVersion: 1` 画布和人工修改保持兼容。构建不会改写仓库中已发布的版本压缩包。
+
 ```bash
 npm run check
 npm run test:e2e
+npm run test:build
 npm run test:skill
 npm run test:install
 ```

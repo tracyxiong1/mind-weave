@@ -1,0 +1,12 @@
+.canvas-editor { position: absolute; inset: 0; }
+.canvas-editor .excalidraw.theme--dark { --theme-filter: none; }
+.canvas-editor .excalidraw :is(.layer-ui__wrapper, .App-top-bar, .App-bottom-bar) { display: none; }
+.canvas-editor .excalidraw-hyperlinkContainer, .canvas-editor .excalidraw__embeddable-hint { display: none; }
+body:has(.canvas-editor) > .excalidraw-tooltip { display: none; }
+.canvas-editor > .world { z-index: 3; pointer-events: none; }
+.canvas-editor > .world .node { pointer-events: auto; }
+.canvas-editor > .world .canvas-root { pointer-events: none; }
+/* Native lines are the visible graph. SVG routes retain accessible edge actions. */
+.canvas-editor .edge-line { stroke: transparent; }
+.canvas-editor .edge-hit { pointer-events: stroke; }
+.canvas .empty-state { z-index: 4; }

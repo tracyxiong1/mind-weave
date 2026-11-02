@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net'
 import { isRecord } from '../core/live'
 import { CanvasError } from './types'
 import { CanvasStore } from './store'
-import { createCanvasServer } from './http'
+import { createCanvasServer, SERVER_PROTOCOL } from './http'
 import { runtimePaths } from './runtime'
 import { withLock } from './lock'
 
@@ -30,7 +30,7 @@ async function control(state: ServerState, stop = false, allowLegacy = false) {
     if (!response.ok) return false
     if (stop) return true
     const body: unknown = await response.json()
-    return isRecord(body) && body.service === 'mindweave' && (body.protocol === 2 || (allowLegacy && body.protocol === 1))
+    return isRecord(body) && body.service === 'mindweave' && (body.protocol === SERVER_PROTOCOL || (allowLegacy && (body.protocol === 1 || body.protocol === 2)))
   } catch { return false }
 }
 async function clearOwnedState(paths: Paths, secret: string) {
@@ -62,8 +62,8 @@ export async function ensureServer(paths = runtimePaths()): Promise<ServerState>
   return withLock(paths.serverLock, async () => {
     const current = await readState(paths)
     if (current && await control(current)) return current
-    // A 0.2 daemon cannot validate imported providers. Replace it after verifying
-    // its private control credential, without deleting any canvas data.
+    // Older daemons lack provider validation or the new renderer's resource
+    // routes. Replace only after verifying their private control credential.
     if (current && await control(current, false, true)) {
       if (!await control(current, true)) throw new CanvasError('旧版画布服务暂时无法停止，请稍后重试。')
       for (let i = 0; i < 30 && await control(current, false, true); i++) await new Promise(resolve => setTimeout(resolve, 100))

@@ -6,6 +6,8 @@
 
 顶部保存提示闪烁的修复与回归验收见 [保存提示闪烁修复](save-flicker.md)。
 
+2026-11-02 主画布迁移到 Excalidraw；当前截图已随回归更新，迁移范围与验收见 [Excalidraw 迁移记录](excalidraw/README.md)。下面的用例数量保留第一阶段历史结果。
+
 ## 环境与结果
 
 - Node.js 22.16.0、npm 10.9.2。

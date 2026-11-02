@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type FocusEvent } from 'react'
 import { createDocument, execute, materialize, newId, redo, undo } from './core/model'
-import { loadDocument, saveDocument, storageKey, type StoragePort } from './core/persistence'
+import { saveDocument, storageKey, type StoragePort } from './core/persistence'
 import { referenceFor, resolveReference } from './core/references'
 import { edgePath, fitView, NODE_WIDTH, zoomAt, type Size } from './core/geometry'
 import { DEFAULT_NODE_HEIGHT, freePosition, layoutNodes } from './core/layout'
@@ -12,6 +12,9 @@ import { Dialog } from './components/Dialog'
 import { Icon, IconButton } from './components/Icon'
 import { NodeCard, type NodeAction } from './components/NodeCard'
 import { CanvasRoot } from './components/CanvasRoot'
+import { ExcalidrawSurface } from './canvas/ExcalidrawSurface'
+import type { SceneBox, SceneEdge } from './canvas/scene'
+import { loadSampleDraft } from './data/drafts'
 
 const storage: StoragePort = {
   getItem: key => window.localStorage.getItem(key),
@@ -26,8 +29,8 @@ type Panel =
   | { type: 'relations'; nodeId: string }
   | { type: 'edge'; edgeId: string }
 type Gesture =
-  | { type: 'pan'; pointerId: number; x: number; y: number; viewport: Viewport }
   | { type: 'node'; pointerId: number; x: number; y: number; id: string; position: Position; positions: Record<string, Position>; zoom: number; moved: boolean }
+type CanvasKey = Pick<globalThis.KeyboardEvent, 'target' | 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'preventDefault'>
 
 function download(text: string, name: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
@@ -37,8 +40,8 @@ function download(text: string, name: string) {
 }
 
 export function CanvasApp({ sample, conversation, live }: { sample: Sample; conversation?: Conversation; live?: LiveCanvas }) {
-  const [initial] = useState(() => live ? restoreLiveDraft(storage, live) : loadDocument(storage, sample))
-  const [sourceData, setSourceData] = useState({ sample, conversation })
+  const [initial] = useState(() => live ? { ...restoreLiveDraft(storage, live), sample } : loadSampleDraft(storage, sample, conversation))
+  const [sourceData, setSourceData] = useState({ sample: initial.sample, conversation })
   const [doc, setDoc] = useState(initial.document)
   const docRef = useRef(doc)
   docRef.current = doc
@@ -50,6 +53,9 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   const [sources, setSources] = useState<string[]>([])
   const [showAllRelations, setShowAllRelations] = useState(false)
   const [closed, setClosed] = useState(false)
+  const [editorTheme, setEditorTheme] = useState<'light' | 'dark'>(() => initial.document.view.theme === 'system'
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' : initial.document.view.theme)
+  const surfaceInteracting = useRef(false)
   const [heights, setHeights] = useState<Record<string, number>>({})
   const [size, setSize] = useState<Size>({ width: window.innerWidth, height: window.innerHeight })
   const [drag, setDrag] = useState<{ id: string; position: Position; positions: Record<string, Position> } | null>(null)
@@ -67,7 +73,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
       .flatMap(edge => [edge.from, edge.to])])
   }, [doc.view.selected, graph.edges])
   const layout = useMemo(() => layoutNodes(graph.nodes.map(node => node.id), doc.view.positions, heights), [graph.nodes, doc.view.positions, heights])
-  const displayPositions = positionsWithRoot(forest, drag ? { ...drag.positions, [drag.id]: drag.position } : layout, heights)
+  const displayPositions = useMemo(() => positionsWithRoot(forest, drag ? { ...drag.positions, [drag.id]: drag.position } : layout, heights), [forest, drag, layout, heights])
   const canvasRoot = displayPositions[CANVAS_ROOT_ID]
   const canvasTitle = (sourceData.conversation?.title ?? live?.connection.title ?? '').replace(/^\d{4}｜[^｜]+｜/, '').trim() || '会话总览'
   const emphasizedId = useMemo(() => {
@@ -79,7 +85,12 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     return graph.nodes.filter(node => node.kind === 'discussion' && (degrees.get(node.id) ?? 0) >= 2)
       .sort((a, b) => degrees.get(b.id)! - degrees.get(a.id)! || a.id.localeCompare(b.id))[0]?.id
   }, [graph])
-  const view = doc.view.viewport ?? { x: 0, y: 0, zoom: 1 }
+  // Restoring a document briefly clears its viewport before fit() runs. Keep
+  // the last visible view until that fit is ready, rather than echoing a reset
+  // through the native editor and back into the document being restored.
+  const lastView = useRef<Viewport>({ x: 0, y: 0, zoom: 1 })
+  const view = doc.view.viewport ?? lastView.current
+  lastView.current = view
   const positionFor = (id: string): Position => displayPositions[id]
   function vacantPosition(id: string, desired: Position, positions = displayPositions, height = heights[id] ?? DEFAULT_NODE_HEIGHT) {
     return freePosition(desired, height, Object.entries(positions).filter(([other]) => other !== id)
@@ -94,7 +105,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
         docRef.current = record.document; setDoc(record.document)
         setSourceData({ sample: record.sample, conversation: record.conversation })
       },
-      interacting: () => Boolean(interaction.current.blocked || interaction.current.panel || interaction.current.editing || gesture.current),
+      interacting: () => Boolean(interaction.current.blocked || interaction.current.panel || interaction.current.editing || gesture.current || surfaceInteracting.current),
     })
     liveClient.current = client
     const poll = setInterval(() => { void client.poll() }, 2500)
@@ -115,6 +126,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
       const theme = doc.view.theme === 'system' ? media.matches ? 'dark' : 'light' : doc.view.theme
+      setEditorTheme(theme)
       document.documentElement.dataset.theme = theme
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#191919' : '#f8f8f7')
     }
@@ -202,41 +214,33 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
   }, [])
-  useEffect(() => {
-    const element = canvasRef.current
-    if (!element) return
-    const wheel = (event: WheelEvent) => {
-      if (panel || ((event.target as HTMLElement).closest('.node-details, textarea') && !event.ctrlKey && !event.metaKey)) return
-      event.preventDefault()
-      const rect = element.getBoundingClientRect()
-      const delta = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? size.height : 1
-      changeView(state => {
-        const current = state.viewport ?? { x: 0, y: 0, zoom: 1 }
-        const viewport = event.ctrlKey || event.metaKey
-          ? zoomAt(current, Math.exp(-event.deltaY * delta * 0.005), { x: event.clientX - rect.left, y: event.clientY - rect.top })
-          : { ...current, x: current.x - event.deltaX * delta, y: current.y - event.deltaY * delta }
-        return { ...state, viewport }
-      })
+  const handleShortcut = useCallback((event: CanvasKey) => {
+    if (!panel && editing && event.key === 'Escape') {
+      setEditing(null)
+      requestAnimationFrame(() => document.getElementById(`node-${editing}`)?.focus({ preventScroll: true }))
+      return
     }
-    element.addEventListener('wheel', wheel, { passive: false })
-    return () => element.removeEventListener('wheel', wheel)
-  }, [closed, panel, changeView, size.height])
-  useEffect(() => {
-    const key = (event: globalThis.KeyboardEvent) => {
-      if (!panel && editing && event.key === 'Escape') {
-        setEditing(null)
-        requestAnimationFrame(() => document.getElementById(`node-${editing}`)?.focus({ preventScroll: true }))
-        return
-      }
-      if ((event.target as HTMLElement).closest('input, textarea, dialog') || panel || editing) return
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-        event.preventDefault(); setDoc(current => event.shiftKey ? redo(current) : undo(current))
-      }
-      if (event.key === 'Escape') { setMenu(null); setEditing(null); changeView(view => ({ ...view, selected: null })) }
+    if ((event.target as HTMLElement).closest('input, textarea, dialog') || panel || editing) return
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault(); setPanel({ type: 'resolve' })
     }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+      event.preventDefault(); setDoc(current => event.shiftKey ? redo(current) : undo(current))
+    }
+    if (event.key === 'Escape') { setMenu(null); setEditing(null); changeView(view => ({ ...view, selected: null })) }
   }, [panel, editing, changeView])
+  useEffect(() => {
+    window.addEventListener('keydown', handleShortcut)
+    return () => window.removeEventListener('keydown', handleShortcut)
+  }, [handleShortcut])
+  function panKey(event: CanvasKey) {
+    const delta: Record<string, [number, number]> = { ArrowLeft: [60, 0], ArrowRight: [-60, 0], ArrowUp: [0, 60], ArrowDown: [0, -60] }
+    if (!delta[event.key]) return false
+    event.preventDefault()
+    const [x, y] = delta[event.key]
+    changeView(state => ({ ...state, viewport: { ...view, x: view.x + x, y: view.y + y } }))
+    return true
+  }
 
   function startNodeDrag(event: PointerEvent<HTMLElement>, node: RenderNode) {
     if (event.button !== 0 || (event.target as HTMLElement).closest('button, input, textarea, details, .node-details, .context-menu')) return
@@ -251,8 +255,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     if (!active || active.pointerId !== event.pointerId) return
     const dx = event.clientX - active.x
     const dy = event.clientY - active.y
-    if (active.type === 'pan') changeView(state => ({ ...state, viewport: { ...active.viewport, x: active.viewport.x + dx, y: active.viewport.y + dy } }))
-    else if (Math.hypot(dx, dy) > 3 || active.moved) {
+    if (Math.hypot(dx, dy) > 3 || active.moved) {
       active.moved = true
       const desired = { x: active.position.x + dx / active.zoom, y: active.position.y + dy / active.zoom, pinned: true }
       setDrag({ id: active.id, position: vacantPosition(active.id, desired, active.positions), positions: active.positions })
@@ -324,19 +327,36 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
     ? { schemaVersion: 1, document: doc, conversation: sourceData.conversation, sources: sourceData.sample.sources, connection: live.connection }
     : doc, null, 2), `${doc.id}.json`)
 
+  const sceneBoxes: SceneBox[] = useMemo(() => Object.entries(displayPositions).map(([id, position]) => ({ id, position, height: heights[id] ?? DEFAULT_NODE_HEIGHT })), [displayPositions, heights])
+  const sceneEdges: SceneEdge[] = useMemo(() => [
+    // @ is outside the business-ID alphabet, so virtual and saved edges cannot collide.
+    ...(canvasRoot ? forest.roots.map(id => ({ id: `@root-${id}`, visible: true,
+      path: edgePath(canvasRoot, heights[CANVAS_ROOT_ID] ?? DEFAULT_NODE_HEIGHT, positionFor(id), heights[id] ?? DEFAULT_NODE_HEIGHT),
+      suggested: graph.nodes.find(node => node.id === id)?.kind === 'suggestion', muted: Boolean(relatedIds) })) : []),
+    ...graph.edges.map(edge => ({ id: edge.id,
+      path: edgePath(positionFor(edge.from), heights[edge.from] ?? DEFAULT_NODE_HEIGHT, positionFor(edge.to), heights[edge.to] ?? DEFAULT_NODE_HEIGHT,
+        graph.nodes.filter(node => node.id !== edge.from && node.id !== edge.to).map(node => ({ position: positionFor(node.id), height: heights[node.id] ?? DEFAULT_NODE_HEIGHT }))),
+      visible: forest.edgeIds.has(edge.id) || edge.userCreated || showAllRelations || edge.from === doc.view.selected || edge.to === doc.view.selected,
+      suggested: edge.suggested, secondary: !forest.edgeIds.has(edge.id),
+      focused: edge.from === doc.view.selected || edge.to === doc.view.selected,
+      muted: Boolean(relatedIds && edge.from !== doc.view.selected && edge.to !== doc.view.selected),
+    })),
+  ], [canvasRoot, forest, heights, graph, displayPositions, doc.view.selected, showAllRelations, relatedIds])
+  const paths = useMemo(() => new Map(sceneEdges.map(edge => [edge.id, edge.path])), [sceneEdges])
+
   return <>
     {closed ? <div className="closed-preview"><span>Mindweave</span><button type="button" onClick={() => setClosed(false)}>打开画布</button></div> : <main ref={canvasRef} className="canvas" aria-label="会话画布" tabIndex={0}
-      onPointerDown={event => {
-        if (event.button !== 0 || (event.target as HTMLElement).closest('[data-node], [data-edge], button, .toolbar, .save-warning')) return
-        changeView(state => ({ ...state, selected: null })); setMenu(null)
-        gesture.current = { type: 'pan', pointerId: event.pointerId, x: event.clientX, y: event.clientY, viewport: view }
-        event.currentTarget.setPointerCapture(event.pointerId)
-      }} onPointerMove={movePointer} onPointerUp={event => endPointer(event)} onPointerCancel={event => endPointer(event, true)}
+      onPointerMove={movePointer} onPointerUp={event => endPointer(event)} onPointerCancel={event => endPointer(event, true)}
       onKeyDown={event => {
         if (event.target !== event.currentTarget) return
-        const delta: Record<string, [number, number]> = { ArrowLeft: [60, 0], ArrowRight: [-60, 0], ArrowUp: [0, 60], ArrowDown: [0, -60] }
-        if (delta[event.key]) { event.preventDefault(); const [x, y] = delta[event.key]; changeView(state => ({ ...state, viewport: { ...view, x: view.x + x, y: view.y + y } })) }
+        panKey(event)
       }}>
+      <ExcalidrawSurface boxes={sceneBoxes}
+        edges={sceneEdges} viewport={view} theme={editorTheme} paused={Boolean(panel) || !doc.view.viewport}
+        onViewport={viewport => changeView(state => ({ ...state, viewport }))}
+        onInteraction={active => { surfaceInteracting.current = active }}
+        onCanvasKeyDown={event => { if (!panKey(event)) handleShortcut(event) }}
+        onClearSelection={() => { changeView(state => ({ ...state, selected: null })); setMenu(null) }}>
       <div className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
         <svg className="edges" width="1" height="1" aria-label="节点关系">
           {canvasRoot && forest.roots.map(id => <g key={`root-${id}`} data-root-edge={id} aria-hidden="true"
@@ -344,10 +364,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
             <path className="edge-line" d={edgePath(canvasRoot, heights[CANVAS_ROOT_ID] ?? DEFAULT_NODE_HEIGHT, positionFor(id), heights[id] ?? DEFAULT_NODE_HEIGHT)} />
           </g>)}
           {graph.edges.map(edge => {
-            const from = positionFor(edge.from); const to = positionFor(edge.to)
-            const path = edgePath(from, heights[edge.from] ?? DEFAULT_NODE_HEIGHT, to, heights[edge.to] ?? DEFAULT_NODE_HEIGHT,
-              graph.nodes.filter(node => node.id !== edge.from && node.id !== edge.to)
-                .map(node => ({ position: positionFor(node.id), height: heights[node.id] ?? DEFAULT_NODE_HEIGHT })))
+            const path = paths.get(edge.id)!
             const fromTitle = graph.nodes.find(node => node.id === edge.from)?.title
             const toTitle = graph.nodes.find(node => node.id === edge.to)?.title
             const primary = forest.edgeIds.has(edge.id)
@@ -372,10 +389,11 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
           onCopy={() => void copy(node)} onSources={() => setSources(old => old.includes(node.id) ? old.filter(id => id !== node.id) : [...old, node.id])}
           onDrag={event => startNodeDrag(event, node)} onKey={event => nodeKey(event, node)} onFocus={keepFocusVisible} onMeasure={measure} />)}
       </div>
+      </ExcalidrawSurface>
       {!graph.nodes.length && <div className="empty-state"><p>画布为空</p><button onClick={() => setPanel({ type: 'note' })}>新增笔记</button><button onClick={() => setDoc(undo)}>撤销删除</button></div>}
       <div className="toolbar top-controls" aria-label="画布操作">
         <IconButton icon="note" label="新增笔记" onClick={() => setPanel({ type: 'note' })} />
-        <IconButton icon="link" label="定位引用" onClick={() => setPanel({ type: 'resolve' })} />
+        <IconButton icon="search" label="定位引用" title="查找节点或定位引用（Ctrl / ⌘ + K）" onClick={() => setPanel({ type: 'resolve' })} />
         <IconButton icon="arrange" label="整理布局" title="按分支整理布局（可撤销）" onClick={arrange} disabled={!graph.nodes.length || Boolean(editing)} />
         <IconButton icon="relations" label="显示全部关联" title={showAllRelations ? '收起补充关联' : '显示全部关联'} aria-pressed={showAllRelations}
           onClick={() => setShowAllRelations(value => !value)} disabled={!graph.edges.length} />
@@ -396,7 +414,7 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
       {saveProblem && <div className="save-warning" role="alert"><span>{saveProblem}</span><button onClick={() => setPanel({ type: 'help' })}>查看保存选项</button></div>}
     </main>}
     <div className={`toast ${toast ? 'visible' : ''}`} role="status" aria-live="polite">{toast}</div>
-    {panel && <Dialog key={panel.type} title={panel.type === 'help' ? '使用说明与保存' : panel.type === 'resolve' ? '定位稳定引用' : panel.type === 'copy' ? '复制稳定引用' : panel.type === 'note' ? '新增用户笔记' : panel.type === 'target' ? panel.operation === 'merge' ? '合并节点' : '建立关系' : '节点关系'} onClose={() => setPanel(null)}>
+    {panel && <Dialog key={panel.type} title={panel.type === 'help' ? '使用说明与保存' : panel.type === 'resolve' ? '查找节点与引用' : panel.type === 'copy' ? '复制稳定引用' : panel.type === 'note' ? '新增用户笔记' : panel.type === 'target' ? panel.operation === 'merge' ? '合并节点' : '建立关系' : '节点关系'} onClose={() => setPanel(null)}>
       {panel.type === 'help' && <div className="help-content">
         <p>在画布中回看和修正思路。选中节点不会发送消息；继续交流仍在原 agent 对话里。</p>
         <p>多个主题分支统一从会话主题根节点展开；已有单一根节点的画布直接沿用。整理布局后，根节点位于最左侧，一级分支对齐排列。</p>
@@ -419,7 +437,8 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
         <h3>三个内置样例</h3><div className="sample-links"><a href="?sample=branches">多次分叉</a><a href="?sample=learning">学习型</a><a href="?sample=planning">方案讨论型</a></div>
         <p className="muted">{live ? '当前画布来自导入的会话文本。整理由 Mindweave skill 手动触发；引用也由该 skill 读取。' : '当前展示内置样例。使用 Mindweave skill 整理当前会话后，可以打开对应画布。'}</p>
       </div>}
-      {panel.type === 'resolve' && <ReferenceForm onResolve={reference => { const error = resolve(reference); if (!error) setPanel(null); return error }} />}
+      {panel.type === 'resolve' && <ReferenceForm nodes={graph.nodes} onSelect={node => { focusNode(node); setPanel(null) }}
+        onResolve={reference => { const error = resolve(reference); if (!error) setPanel(null); return error }} />}
       {panel.type === 'copy' && <><p>选中下面的引用，按 Ctrl / ⌘ + C 复制。</p><textarea className="reference-input" aria-label="稳定引用" readOnly value={panel.reference} autoFocus onFocus={event => event.target.select()} /></>}
       {panel.type === 'note' && <NoteForm onSave={(title, summary) => {
         const id = newId('note')
@@ -443,12 +462,20 @@ export function CanvasApp({ sample, conversation, live }: { sample: Sample; conv
   </>
 }
 
-function ReferenceForm({ onResolve }: { onResolve: (reference: string) => string | null }) {
+function ReferenceForm({ nodes, onSelect, onResolve }: { nodes: RenderNode[]; onSelect: (node: RenderNode) => void; onResolve: (reference: string) => string | null }) {
   const [reference, setReference] = useState('')
   const [error, setError] = useState<string | null>(null)
-  return <form onSubmit={event => { event.preventDefault(); setError(onResolve(reference)) }}>
-    <p>粘贴此画布的稳定引用。改标题或合并节点后，原引用仍能定位。</p>
-    <label>稳定引用<textarea className="reference-input" aria-label="待定位引用" autoFocus value={reference} onChange={event => { setReference(event.target.value); setError(null) }} placeholder="mindweave://canvas/mw-branches/node/comparison" required /></label>
+  const query = reference.trim().toLocaleLowerCase()
+  const matches = query && !query.includes('://') ? nodes.filter(node => `${node.title}\n${node.summary}`.toLocaleLowerCase().includes(query)) : []
+  return <form onSubmit={event => {
+    event.preventDefault()
+    if (matches.length === 1) onSelect(matches[0])
+    else if (matches.length) setError('请选择要定位的节点。')
+    else setError(onResolve(reference))
+  }}>
+    <p>搜索标题、摘要，或粘贴稳定引用。改标题或合并节点后，原引用仍能定位。</p>
+    <label>标题、摘要或引用<textarea className="reference-input" aria-label="待定位引用" autoFocus value={reference} onChange={event => { setReference(event.target.value); setError(null) }} placeholder="搜索节点，或粘贴 mindweave://…" required /></label>
+    {matches.length > 0 && <div className="node-search-results" aria-label="匹配节点">{matches.map(node => <button key={node.id} type="button" onClick={() => onSelect(node)}><strong>{node.title}</strong>{node.summary && <small>{node.summary}</small>}</button>)}</div>}
     {error && <p className="error-text" role="alert">{error}</p>}<div className="form-actions"><button className="primary" type="submit">定位节点</button></div>
   </form>
 }

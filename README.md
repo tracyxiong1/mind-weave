@@ -6,6 +6,8 @@
 
 **当前状态：通用 Agent Skills 安装、会话 JSON 导入与 Codex 手动闭环已实现。** 可在 Codex 中整理真实对话、打开画布、修改节点，再用稳定引用读回最新内容继续讨论。无参数打开仍展示固定样例，无需额外账户、云服务或模型 API 密钥。
 
+主画布已采用 Excalidraw，保留原来的阅读卡片、数据格式和保存回读流程；迁移范围和验证见 [Excalidraw 迁移验收](docs/validation/excalidraw/README.md)。
+
 ## 用户安装
 
 在 Codex 中通过内置安装器安装完整 skill：
@@ -73,6 +75,7 @@ Codex 只读捕获当前会话，由当前 agent 提炼带真实来源的节点�
 - 撤销与重做最近 40 步；刷新后仍能撤销已保存的操作。
 - 自动本地保存内容、人工修改、节点位置、展开状态、视口与主题。
 - 复制并解析稳定引用；改标题或合并后，原引用仍然有效。
+- 查找节点标题、摘要或稳定引用；也可按 Ctrl / ⌘ + K 打开查找。
 - 导出当前画布 JSON；无法读取的本地数据保留原样，可先下载原数据再恢复示例。
 
 选中节点只改变查看状态。画布没有聊天输入框，也不会修改原对话或发送 agent 消息。AI 建议保持虚线并标记“尚未讨论”；手工内容标为用户笔记，不冒充对话来源。
@@ -121,11 +124,14 @@ mindweave:v1:canvas:mw-branches
 
 ## 开发与验证
 
-React + TypeScript + Vite，HTML 节点与 SVG 连线，无图编辑器或同步框架依赖。依赖版本锁定在 `package-lock.json`。
+React + TypeScript + Vite，使用 `@excalidraw/excalidraw@0.18.1` 绘制原生场景并处理空白平移。HTML 阅读层保留详情、来源和表单，Mindweave 数据模型继续负责布局、编辑与持久化撤销。依赖版本锁定在 `package-lock.json`。
+
+页面和所用 UI 字体均随本地构建及 skill 提供；第三方声明位于产物的 `THIRD-PARTY-NOTICES.txt`。`npm run dev:excalidraw` 保留原 5180 端口，但使用同一份正式实现；默认开发端口仍为 5173。
 
 ```bash
 npm run check      # 类型检查、数据测试、生产构建
 npm run test:e2e   # Chromium 交互、Codex 画布回读、持久化与恢复
+npm run test:build # 生产构建的阅读、编辑、主题与恢复回归
 npm run test:skill # 独立 skill 安装、通用导入与浏览器闭环
 npm run test:install # npm 安装、存量项目首次使用与 Codex 闭环
 npm run build:skill # 更新随 GitHub skill 分发的 CLI 和页面
@@ -138,6 +144,7 @@ npm run build:skill # 更新随 GitHub skill 分发的 CLI 和页面
 - [产品规则](docs/product.md)
 - [实施路线](docs/roadmap.md)
 - [版本化数据契约](docs/data-contract.md)
+- [Excalidraw 迁移与原版功能对齐](docs/validation/excalidraw/README.md)
 - [概念图](docs/design/README.md)
 - [验证记录与截图](docs/validation/README.md)
 
