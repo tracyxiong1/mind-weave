@@ -47,8 +47,8 @@ Excalidraw 提供原生场景和视口；Mindweave 保留业务数据、阅读�
 | 检查 | 范围 |
 | --- | --- |
 | `npm run check` | 类型检查、94 项单元测试、生产构建 |
-| `npm run test:e2e` | 原版 18 项画布与 4 项 Codex 保存链路，加 4 项引擎、查找、旧草稿和初始化恢复用例 |
-| `npm run test:build` | 相同生产页面的 22 项画布交互与恢复用例，覆盖压缩构建的初始化行为 |
+| `npm run test:e2e` | 共 31 项：18 项画布、4 项 Codex 保存链路、4 项引擎与恢复，以及 5 项阅读和手势回归 |
+| `npm run test:build` | 相同生产页面的 27 项画布、恢复与阅读手势用例，覆盖压缩构建的初始化行为 |
 | `npm run test:skill` | 独立 skill 目录安装、通用 JSON 导入、实际页面编辑与引用回读、再次整理保护、移动安装目录后重启、旧服务升级 |
 | `npm run test:install` | npm 打包与安装、全局 CLI、skill 配置、实际页面保存回读与原项目保持 |
 
@@ -62,7 +62,7 @@ Codex 测试验证真实本地 API、文件保存和 CLI 读取，消息来自�
 
 只打包当前 UI 使用的字体；未开放的绘图字体不进入正式产物。构建汇总实际打包模块及 Excalidraw 依赖树中的许可证，另补核心 MIT 与 Assistant OFL 声明，随网页和 skill 的 `assets/licenses/third-party.txt` 提供。
 
-单次生产采样（Chromium 151、1440×900、6 个示例节点）：
+迁移完成时的单次生产采样（Chromium 151、1440×900、6 个示例节点；后续交互修复未重新采样）：
 
 | 项目 | 结果 |
 | --- | ---: |

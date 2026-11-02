@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent, type FocusEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type KeyboardEvent, type FocusEvent, type RefObject, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { excerptFor } from '../data/samples'
 import type { Conversation, Position, RenderNode, Sample } from '../core/types'
 import { Icon } from './Icon'
@@ -18,6 +19,7 @@ interface Props {
   menuOpen: boolean
   showSources: boolean
   onSelect: () => void
+  onActivate: () => void
   onExpand: () => void
   onEdit: () => void
   onSave: (title: string, summary: string) => void
@@ -35,6 +37,7 @@ export function NodeCard(props: Props) {
   const { node, position, emphasized, expanded, selected, editing, menuOpen, showSources, sample } = props
   const showSummary = Boolean(node.summary && (expanded || emphasized))
   const ref = useRef<HTMLElement>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(node.title)
   const [summary, setSummary] = useState(node.summary)
@@ -54,8 +57,13 @@ export function NodeCard(props: Props) {
   return <article ref={ref} id={`node-${node.id}`} data-node={node.id} data-testid={`node-${node.id}`} tabIndex={0}
     aria-label={node.title} aria-keyshortcuts="Enter F2 Delete" aria-describedby={showSummary && !editing ? `summary-${node.id}` : undefined}
     className={`node ${emphasized ? 'emphasized' : ''} ${selected ? 'selected' : ''} ${props.unrelated ? 'unrelated' : ''} ${node.kind === 'suggestion' ? 'suggested' : ''} ${editing ? 'editing' : ''}`}
-    style={{ left: position.x, top: position.y }} onPointerDown={props.onDrag} onClick={props.onSelect}
-    onDoubleClick={event => { if (!(event.target as HTMLElement).closest('button, input, textarea, details, .context-menu')) { event.stopPropagation(); props.onEdit() } }}
+    style={{ left: position.x, top: position.y }} onPointerDown={props.onDrag} onClick={event => {
+      const target = event.target as HTMLElement
+      if (target.closest('button, input, textarea, details, .context-menu')) return
+      if (target.closest('.node-details')) props.onSelect()
+      else if (event.detail < 2) props.onActivate()
+    }}
+    onDoubleClick={event => { if (!(event.target as HTMLElement).closest('button, input, textarea, details, .node-details, .context-menu')) { event.stopPropagation(); props.onEdit() } }}
     onKeyDown={props.onKey} onFocus={props.onFocus}>
     {editing ? <form className="node-editor" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); props.onSave(title, summary) }}>
       <label>标题<input ref={titleRef} aria-label="节点标题" value={title} onChange={event => setTitle(event.target.value)} required maxLength={120} /></label>
@@ -64,8 +72,13 @@ export function NodeCard(props: Props) {
     </form> : <>
       <div className="node-heading">
         <h2>{node.title}</h2>
+        <div className="node-heading-actions">
         <button type="button" className="expand-button" title={expanded ? '折叠详情' : '展开详情'} aria-label={`${expanded ? '折叠' : '展开'} ${node.title}`} aria-expanded={expanded}
+          aria-controls={`details-${node.id}`}
           onClick={event => { event.stopPropagation(); props.onExpand() }}><span className={expanded ? 'rotated' : ''}><Icon name="chevron" /></span></button>
+        <button ref={menuButton} type="button" className="more-button" aria-label={`${node.title} 的操作`} aria-expanded={menuOpen} aria-controls={menuOpen ? `menu-${node.id}` : undefined}
+          onClick={event => { event.stopPropagation(); props.onMenu() }}><Icon name="more" /></button>
+        </div>
       </div>
       {showSummary && !expanded && <p id={`summary-${node.id}`} className="node-summary">{node.summary}</p>}
       {(node.kind !== 'discussion' || (expanded && node.modified)) && <div className="node-meta">
@@ -73,7 +86,7 @@ export function NodeCard(props: Props) {
         {node.kind === 'note' && <span>用户笔记</span>}
         {node.modified && expanded && <span>已编辑</span>}
       </div>}
-      {expanded && <div className="node-details">
+      {expanded && <div id={`details-${node.id}`} className="node-details">
         {showSummary && <p id={`summary-${node.id}`} className="node-summary full">{node.summary}</p>}
         {node.details && <Explanation id={`explanation-${node.id}`} text={node.details} />}
         {node.members.filter(member => member.id !== node.id).map(member => <section className="merged-part" key={member.id}>
@@ -101,13 +114,42 @@ export function NodeCard(props: Props) {
         </section>}
       </div>}
     </>}
-    {!editing && <button type="button" className="more-button" aria-label={`${node.title} 的操作`} aria-expanded={menuOpen}
-      onClick={event => { event.stopPropagation(); props.onMenu() }}><Icon name="more" /></button>}
-    {menuOpen && <div className="context-menu" role="group" aria-label="节点操作" onClick={event => event.stopPropagation()}>
+    {menuOpen && <NodeMenu id={`menu-${node.id}`} anchor={menuButton} onClose={props.onMenu}>
       {menuItems.map(([action, label, icon]) => <button key={action} type="button" className={action === 'delete' ? 'danger' : ''}
         onClick={() => props.onAction(action)}><Icon name={icon} />{label}</button>)}
-    </div>}
+    </NodeMenu>}
   </article>
+}
+
+function NodeMenu({ id, anchor, onClose, children }: { id: string; anchor: RefObject<HTMLButtonElement | null>; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ left: 0, top: 0 })
+  // Render outside the scaled world so controls stay readable and inside the window.
+  useLayoutEffect(() => {
+    const menu = ref.current, button = anchor.current
+    if (!menu || !button) return
+    const rect = button.getBoundingClientRect()
+    const left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12))
+    const below = rect.bottom + 6
+    const top = Math.max(12, Math.min(below + menu.offsetHeight <= window.innerHeight - 12 ? below : rect.top - menu.offsetHeight - 6, window.innerHeight - menu.offsetHeight - 12))
+    setPosition(old => old.left === left && old.top === top ? old : { left, top })
+  })
+  useEffect(() => { ref.current?.querySelector('button')?.focus({ preventScroll: true }) }, [])
+  return createPortal(<div ref={ref} id={id} className="context-menu node-context-menu" role="group" aria-label="节点操作" style={position}
+    onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}
+    onKeyDown={event => {
+      if (event.key === 'Escape') {
+        event.preventDefault(); event.stopPropagation(); onClose()
+        requestAnimationFrame(() => anchor.current?.focus({ preventScroll: true }))
+      }
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation()
+        const buttons = Array.from(ref.current!.querySelectorAll('button'))
+        const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length
+        buttons[next]?.focus({ preventScroll: true })
+      }
+    }}>{children}</div>, document.body)
 }
 
 function Explanation({ id, text }: { id: string; text: string }) {

@@ -73,7 +73,6 @@ test('正式画布由原生画布绘制连线，直接阅读且不显示嵌入�
     return count
   })
   expect(purple).toBe(0)
-  await node.getByRole('button', { name: '展开 与思维导图比较', exact: true }).click()
   await expect(node.locator('.node-details')).toContainText('思维导图通过层级梳理内容')
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')

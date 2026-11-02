@@ -66,7 +66,11 @@ export function ExcalidrawSurface({ boxes, edges, viewport, theme, paused, onVie
     const element = surfaceRef.current!
     const wheel = (event: WheelEvent) => {
       if (callbacks.current.paused) return
-      if ((event.target as HTMLElement).closest('.node-details, textarea') && !event.ctrlKey && !event.metaKey) return
+      const scrollable = (event.target as HTMLElement).closest('.node-details, textarea')
+      if (scrollable && scrollable.scrollHeight > scrollable.clientHeight + 1 && !event.ctrlKey && !event.metaKey) {
+        // Let the browser scroll the reading pane without also panning the editor.
+        event.stopPropagation(); return
+      }
       event.preventDefault(); event.stopPropagation()
       const current = viewportRef.current, rect = element.getBoundingClientRect()
       const delta = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1
